@@ -112,7 +112,44 @@ const AICoachPage: React.FC = () => {
       setSuccess('Player style analysis generated successfully!');
     } catch (err) {
       console.error('Error generating player style analysis:', err);
-      setError(`Failed to generate analysis: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      
+      // Check if it's a 403 error (API not deployed) and provide helpful message
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
+        // Provide demo analysis when API is not available
+        const demoAnalysis = `**Demo Analysis for ${selectedPlayer.username}**
+
+Based on the available match data and performance metrics, here's a comprehensive playing style analysis:
+
+**Playing Style:** ${selectedPlayer.skill_level === 'expert' ? 'Aggressive Baseline Power' : selectedPlayer.skill_level === 'advanced' ? 'All-Court Versatile' : 'Consistent Defensive'}
+
+**Key Strengths:**
+• ${selectedPlayer.matches_won > selectedPlayer.matches_played * 0.6 ? 'Excellent match-closing ability' : 'Strong baseline consistency'}
+• ${selectedPlayer.elo_rating > 1400 ? 'High-level tactical awareness' : 'Solid fundamental technique'}
+• ${selectedPlayer.skill_level === 'expert' ? 'Powerful serve and aggressive net play' : 'Reliable groundstrokes and court positioning'}
+
+**Areas for Improvement:**
+• ${selectedPlayer.matches_won < selectedPlayer.matches_played * 0.4 ? 'Focus on mental toughness in pressure situations' : 'Develop more variety in shot selection'}
+• ${selectedPlayer.skill_level === 'beginner' ? 'Work on serve consistency and placement' : 'Improve transition game and net skills'}
+• Enhance fitness level for longer matches
+
+**Tactical Recommendations:**
+• ${selectedPlayer.elo_rating > 1500 ? 'Develop signature shots to create more winners' : 'Focus on reducing unforced errors'}
+• Practice situational play and match scenarios
+• Work with a coach on specific technical refinements
+
+*Note: This is a demo analysis. Deploy AWS Lambda functions for full AI-powered insights.*`;
+
+        setSelectedPlayer({
+          ...selectedPlayer,
+          player_style_analysis: demoAnalysis
+        });
+        setSuccess('Demo analysis generated! Deploy AWS services for full AI capabilities.');
+      } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+        setError('AI Coach service is experiencing technical difficulties. Please try again later.');
+      } else {
+        setError(`Failed to generate analysis: ${errorMessage}`);
+      }
     } finally {
       setIsGeneratingAnalysis(false);
     }
