@@ -71,8 +71,12 @@ export const LoginForm: React.FC = () => {
       });
       
       if (authError) {
-        if (authError.message.includes('Invalid login credentials')) {
-          throw new Error('Invalid email or password. Please try again.');
+        // Provide a friendlier message when the credentials don't match
+        if (authError.message.toLowerCase().includes('invalid login credentials')) {
+          throw new Error(
+            "Hmm… that email / password combination didn't match our records. " +
+            'Please double-check and try again, or use "Forgot Password?" if you need a reset.'
+          );
         }
         throw authError;
       }

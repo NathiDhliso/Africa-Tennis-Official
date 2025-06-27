@@ -42,3 +42,13 @@ packaged.yaml
 
 # Supabase
 .supabase/
+
+# Deployment scripts containing secrets
+aws/deploy.sh
+aws/deploy.bat
+
+# Test configuration containing keys
+cypress.env.json
+cypress.config.js
+cypress.config.ts
+cypress/support/commands.ts
