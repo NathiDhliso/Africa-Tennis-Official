@@ -1,0 +1,332 @@
+/* Dashboard Page Specific Styles */
+
+.dashboard-page {
+  min-height: 100vh;
+  background: var(--bg-deep-space);
+}
+
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.dashboard-welcome {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, 
+    rgba(15, 23, 42, 0.95) 0%, 
+    rgba(30, 41, 59, 0.95) 25%, 
+    rgba(51, 65, 85, 0.95) 75%, 
+    rgba(71, 85, 105, 0.95) 100%
+  );
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  animation: slide-in-up 0.6s ease-out;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.dashboard-welcome::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, 
+    rgba(64, 220, 255, 0.4) 0%, 
+    rgba(139, 92, 246, 0.4) 25%, 
+    rgba(16, 185, 129, 0.4) 50%, 
+    rgba(245, 158, 11, 0.4) 75%, 
+    rgba(64, 220, 255, 0.4) 100%
+  );
+  background-size: 300% 300%;
+  animation: border-flow 6s linear infinite;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+.dashboard-welcome-content {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-welcome-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.025em;
+}
+
+.dashboard-welcome-name {
+  font-weight: 800;
+  background: linear-gradient(135deg, 
+    #40dcff 0%, 
+    #aa55ff 50%, 
+    #00ffaa 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  display: inline-block;
+  position: relative;
+}
+
+.dashboard-welcome-name::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(135deg, 
+    #40dcff 0%, 
+    #aa55ff 50%, 
+    #00ffaa 100%
+  );
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+.dashboard-welcome-subtitle {
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 400;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+  animation: slide-in-up 0.6s ease-out;
+  animation-delay: 0.1s;
+  animation-fill-mode: both;
+}
+
+.dashboard-stat-card {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px var(--shadow-standard);
+  transition: all 0.3s ease;
+}
+
+.dashboard-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px var(--shadow-elevated);
+  border-color: var(--border-primary);
+}
+
+.dashboard-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--quantum-cyan);
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-stat-label {
+  color: var(--text-subtle);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.dashboard-section {
+  margin-bottom: 3rem;
+  animation: slide-in-up 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+.dashboard-section.stagger-1 { animation-delay: 0.2s; }
+.dashboard-section.stagger-2 { animation-delay: 0.3s; }
+.dashboard-section.stagger-3 { animation-delay: 0.4s; }
+
+.dashboard-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-standard);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Getting Started Section */
+.dashboard-getting-started {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.dashboard-getting-started-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.dashboard-getting-started-icon {
+  color: var(--quantum-cyan);
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-getting-started-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-standard);
+  margin-bottom: 1rem;
+}
+
+.dashboard-getting-started-description {
+  color: var(--text-subtle);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.dashboard-getting-started-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+  
+  .dashboard-welcome {
+    padding: 3rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .dashboard-welcome-title {
+    font-size: 2rem;
+  }
+  
+  .dashboard-welcome-subtitle {
+    font-size: 1rem;
+  }
+  
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .dashboard-stat-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .dashboard-stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .dashboard-section-title {
+    font-size: 1.25rem;
+  }
+  
+  .dashboard-getting-started {
+    padding: 2rem 1.5rem;
+  }
+
+  .dashboard-getting-started-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .dashboard-getting-started-actions .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 0.5rem;
+  }
+  
+  .dashboard-welcome {
+    padding: 2rem 1rem;
+  }
+  
+  .dashboard-welcome-title {
+    font-size: 1.75rem;
+  }
+  
+  .dashboard-welcome-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-stat-card {
+    padding: 1rem;
+  }
+  
+  .dashboard-section-title {
+    font-size: 1.125rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .dashboard-getting-started {
+    padding: 1.5rem 1rem;
+  }
+
+  .dashboard-getting-started-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Enhanced animations for better visual feedback */
+@keyframes border-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dashboard-welcome-title {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  }
+  
+  .dashboard-welcome-subtitle {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-welcome::before {
+    animation: none;
+  }
+}

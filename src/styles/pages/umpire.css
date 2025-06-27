@@ -1,0 +1,576 @@
+/* Umpire Page Styles */
+
+.umpire-page {
+  min-height: 100vh;
+  background: var(--bg-deep-space);
+  padding: 2rem;
+}
+
+.umpire-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.umpire-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.umpire-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-standard);
+  margin-bottom: 1rem;
+}
+
+.umpire-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-subtle);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.umpire-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-standard);
+  margin-bottom: 1.5rem;
+}
+
+/* Empty State */
+.umpire-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 3rem 2rem;
+}
+
+.umpire-empty-content {
+  text-align: center;
+  max-width: 500px;
+}
+
+.umpire-empty-icon {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.umpire-empty-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-standard);
+  margin-bottom: 1rem;
+}
+
+.umpire-empty-description {
+  color: var(--text-subtle);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.umpire-empty-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.umpire-empty-list li {
+  color: var(--text-subtle);
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+}
+
+.umpire-empty-note {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+/* Tournament Selection */
+.umpire-tournament-section {
+  margin-bottom: 3rem;
+}
+
+.umpire-tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.umpire-tournament-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 2px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: slide-in-up 0.6s ease-out;
+}
+
+.umpire-tournament-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px var(--shadow-elevated);
+  border-color: var(--border-primary);
+}
+
+.umpire-tournament-card.selected {
+  border-color: var(--quantum-cyan);
+  background: rgba(0, 212, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
+}
+
+.umpire-tournament-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.umpire-tournament-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-standard);
+  margin: 0;
+}
+
+.umpire-tournament-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.umpire-tournament-location {
+  color: var(--text-subtle);
+  margin-bottom: 1rem;
+}
+
+.umpire-tournament-role {
+  margin-bottom: 1rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.umpire-start-tournament-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--gradient-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.umpire-start-tournament-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--shadow-quantum);
+}
+
+/* Matches Section */
+.umpire-matches-section {
+  margin-bottom: 3rem;
+}
+
+.umpire-matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.umpire-match-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  animation: slide-in-up 0.6s ease-out;
+}
+
+.umpire-match-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--shadow-standard);
+  border-color: var(--border-primary);
+}
+
+.umpire-match-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.umpire-match-round {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.umpire-match-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.umpire-match-players {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.umpire-match-player {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-standard);
+  text-align: center;
+  flex: 1;
+}
+
+.umpire-match-vs {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.umpire-match-score {
+  text-align: center;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-weight: 600;
+  color: var(--quantum-cyan);
+  margin-bottom: 1rem;
+}
+
+.umpire-match-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--gradient-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.umpire-match-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--shadow-quantum);
+}
+
+/* Live Scoring Page */
+.umpire-scoring-page {
+  min-height: 100vh;
+  background: var(--bg-deep-space);
+  padding: 1rem;
+}
+
+.umpire-scoring-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.umpire-scoring-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+}
+
+.umpire-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.umpire-back-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+  border-color: var(--border-primary);
+  color: var(--text-standard);
+}
+
+.umpire-scoring-match-info {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.umpire-scoring-set {
+  padding: 0.375rem 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+}
+
+/* Score Display Enhancements */
+.score-display {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 2px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.score-display-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-standard);
+  margin-bottom: 1rem;
+}
+
+.score-display-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.score-display-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-display-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.score-display-points {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--quantum-cyan);
+  font-family: 'Monaco', 'Menlo', monospace;
+  min-width: 60px;
+  text-align: center;
+}
+
+.score-display-vs {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.score-display-sets {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.score-display-set {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.score-display-serving {
+  width: 8px;
+  height: 8px;
+  background: var(--accent-yellow);
+  border-radius: 50%;
+  margin-left: 0.5rem;
+}
+
+/* Point History */
+.point-history {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.point-history-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-standard);
+  margin-bottom: 1rem;
+}
+
+.point-history-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.point-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.point-history-player {
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.point-history-type {
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+.point-history-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+/* Undo Button */
+.undo-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  color: var(--text-standard);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.undo-button:hover:not(:disabled) {
+  background: var(--hover-bg);
+  border-color: var(--border-primary);
+  transform: translateY(-2px);
+}
+
+.undo-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .umpire-page {
+    padding: 1rem;
+  }
+
+  .umpire-title {
+    font-size: 2rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .umpire-tournament-grid,
+  .umpire-matches-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .umpire-scoring-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .score-display-content {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .score-display-vs {
+    margin: 0.5rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .umpire-page {
+    padding: 0.5rem;
+  }
+
+  .umpire-title {
+    font-size: 1.75rem;
+  }
+
+  .umpire-empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .umpire-empty-list {
+    text-align: center;
+  }
+  
+  .umpire-scoring-container {
+    padding: 0.5rem;
+  }
+  
+  .score-display {
+    padding: 1rem;
+  }
+  
+  .score-display-points {
+    font-size: 2rem;
+  }
+}

@@ -1,0 +1,245 @@
+/* Tournament Form Specific Styles */
+
+.tournament-schedule-display {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.schedule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.schedule-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.schedule-item:first-child {
+  padding-top: 0;
+}
+
+.schedule-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-subtle);
+}
+
+.schedule-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-standard);
+  text-align: right;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+/* Enhanced Tournament Format Styles */
+.format-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.format-option {
+  position: relative;
+  display: block;
+  padding: 1.25rem;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.format-option:hover:not(.disabled) {
+  border-color: var(--border-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow-standard);
+}
+
+.format-option.selected {
+  border-color: var(--quantum-cyan);
+  background: rgba(0, 212, 255, 0.1);
+  box-shadow: 0 0 0 1px var(--quantum-cyan);
+}
+
+.format-option.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.format-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.format-content {
+  position: relative;
+  z-index: 2;
+}
+
+.format-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.format-icon {
+  color: var(--quantum-cyan);
+  flex-shrink: 0;
+}
+
+.format-name {
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.format-description {
+  color: var(--text-subtle);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.format-details {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.coming-soon-badge {
+  margin-left: auto;
+  padding: 0.25rem 0.75rem;
+  background: var(--warning-orange);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.format-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  border-radius: inherit;
+}
+
+.overlay-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+/* Format Info Display */
+.format-info-display {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-surface-gray);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+}
+
+.format-info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.format-info-text {
+  color: var(--text-subtle);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.format-info-additional {
+  color: var(--quantum-cyan);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .schedule-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .schedule-value {
+    text-align: left;
+    font-size: 0.8rem;
+  }
+
+  .format-option {
+    padding: 1rem;
+  }
+
+  .format-header {
+    gap: 0.5rem;
+  }
+
+  .format-description {
+    font-size: 0.8rem;
+  }
+
+  .format-details {
+    font-size: 0.75rem;
+  }
+
+  .coming-soon-badge {
+    font-size: 0.625rem;
+    padding: 0.125rem 0.5rem;
+  }
+}
+
+/* Focus states for accessibility */
+.format-option:focus-within {
+  outline: 2px solid var(--quantum-cyan);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .format-option {
+    border-width: 3px;
+  }
+  
+  .format-option.selected {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .format-option {
+    transition: none;
+  }
+}

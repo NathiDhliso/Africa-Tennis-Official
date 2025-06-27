@@ -1,0 +1,157 @@
+/* Dark Mode - "Midnight Protocol" Theme */
+.theme-dark {
+  /* Primary Colors */
+  --quantum-cyan: #00d4ff;
+  --nebula-purple: #8b5cf6;
+  
+  /* Brand Colors */
+  --brand-forest: #00d4ff;        /* Changed to neon cyan */
+  --brand-forest-dark: #0099cc;   /* Darker neon cyan variant */
+  --brand-sand: #fbbf24;          /* Warm yellow for dark mode */
+  --brand-sand-light: #fcd34d;    /* Lighter variant */
+  
+  /* Accent Colors */
+  --success-green: #00ffaa;
+  --error-pink: #ff3366;
+  --warning-orange: #ff9500;
+  --accent-yellow: #ffdc00;
+  
+  /* Background Colors */
+  --bg-deep-space: #0a0e17;
+  --bg-surface-gray: #111827;
+  --bg-card: #1a1f2e;
+  --bg-elevated: #242938;
+  
+  /* Text Colors */
+  --text-standard: #e9ecef;
+  --text-subtle: #a0a8b4;
+  --text-muted: #6b7280;
+  --text-inverse: #0a0e17;
+  
+  /* Login Specific Colors */
+  --login-bg: linear-gradient(135deg, #0a0e17 0%, #111827 50%, #1a1f2e 100%);
+  --login-pattern: radial-gradient(circle at 75% 25%, #00d4ff 0%, transparent 50%);
+  --login-card-bg: rgba(26, 31, 46, 0.95);
+  --login-border: rgba(0, 212, 255, 0.15);
+  --login-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 212, 255, 0.1);
+  
+  --login-text-primary: #e9ecef;
+  --login-text-secondary: #a0a8b4;
+  --login-text-muted: #6b7280;
+  
+  --login-input-bg: rgba(17, 24, 39, 0.8);
+  --login-input-border: rgba(0, 212, 255, 0.2);
+  --login-focus-ring: rgba(0, 212, 255, 0.2);
+  --login-hover-bg: rgba(0, 212, 255, 0.1);
+  
+  --login-error: #ff3366;
+  --login-error-bg: rgba(255, 51, 102, 0.1);
+  --login-error-border: rgba(255, 51, 102, 0.3);
+  --login-error-ring: rgba(255, 51, 102, 0.2);
+  
+  --login-success: #00ffaa;
+  --login-success-bg: rgba(0, 255, 170, 0.1);
+  --login-success-border: rgba(0, 255, 170, 0.3);
+  
+  --login-disabled: #374151;
+  
+  /* Onboarding Specific Colors */
+  --onboarding-bg: linear-gradient(135deg, #0a0e17 0%, #1a1f2e 25%, #2d1b69 50%, #1e3a8a 75%, #0f766e 100%);
+  --onboarding-pattern: radial-gradient(circle at 25% 75%, #00d4ff 0%, transparent 50%), 
+                        radial-gradient(circle at 75% 25%, #8b5cf6 0%, transparent 50%),
+                        radial-gradient(circle at 50% 50%, #00d4ff 0%, transparent 50%);
+  
+  --onboarding-card-bg: rgba(26, 31, 46, 0.9);
+  --onboarding-card-pattern: linear-gradient(45deg, #00d4ff 0%, #8b5cf6 50%, #00d4ff 100%);
+  --onboarding-border: rgba(0, 212, 255, 0.2);
+  --onboarding-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 12px 40px rgba(0, 212, 255, 0.15);
+  
+  --onboarding-text-primary: #ffffff;
+  --onboarding-text-secondary: #e2e8f0;
+  --onboarding-text-muted: #94a3b8;
+  --onboarding-text-accent: #00d4ff;
+  
+  --onboarding-icon-bg: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+  --onboarding-icon-color: #ffffff;
+  --onboarding-icon-shadow: rgba(0, 212, 255, 0.4);
+  --onboarding-icon-accent: #00d4ff;
+  
+  --onboarding-input-bg: rgba(17, 24, 39, 0.8);
+  --onboarding-input-border: rgba(0, 212, 255, 0.2);
+  --onboarding-focus-color: #00d4ff;
+  --onboarding-focus-ring: rgba(0, 212, 255, 0.2);
+  
+  --onboarding-option-bg: rgba(17, 24, 39, 0.6);
+  --onboarding-option-border: rgba(0, 212, 255, 0.15);
+  --onboarding-option-hover: #00d4ff;
+  --onboarding-option-hover-border: rgba(0, 212, 255, 0.4);
+  --onboarding-option-shadow: rgba(0, 212, 255, 0.2);
+  
+  --onboarding-selected-bg: rgba(0, 212, 255, 0.1);
+  --onboarding-selected-border: #00d4ff;
+  --onboarding-selected-shadow: rgba(0, 212, 255, 0.3);
+  --onboarding-selected-indicator: #00d4ff;
+  --onboarding-indicator-ring: rgba(0, 212, 255, 0.3);
+  
+  --onboarding-rating-bg: rgba(17, 24, 39, 0.8);
+  --onboarding-rating-border: rgba(0, 212, 255, 0.2);
+  
+  --onboarding-button-bg: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+  --onboarding-button-text: #ffffff;
+  --onboarding-button-shadow: rgba(0, 212, 255, 0.4);
+  --onboarding-button-hover-shadow: rgba(0, 212, 255, 0.6);
+  
+  --onboarding-disabled-bg: #374151;
+  --onboarding-disabled-text: #9ca3af;
+  
+  /* Skill Level Colors */
+  --skill-beginner: #00d4ff;
+  --skill-intermediate: #fbbf24;
+  --skill-advanced: #f97316;
+  
+  /* Border Colors */
+  --border-primary: rgba(0, 212, 255, 0.3);
+  --border-secondary: rgba(139, 92, 246, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-muted: rgba(255, 255, 255, 0.05);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(17, 24, 39, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  
+  /* Shadow Colors */
+  --shadow-quantum: rgba(0, 212, 255, 0.4);
+  --shadow-nebula: rgba(139, 92, 246, 0.4);
+  --shadow-standard: rgba(0, 0, 0, 0.5);
+  --shadow-elevated: rgba(0, 0, 0, 0.8);
+  
+  /* Gradient Stops */
+  --gradient-primary: linear-gradient(135deg, #00d4ff 0%, #0099cc 50%, #8b5cf6 100%);
+  --gradient-success: linear-gradient(135deg, var(--success-green), var(--quantum-cyan));
+  --gradient-error: linear-gradient(135deg, var(--error-pink), var(--warning-orange));
+  --gradient-hero: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 35%, #ffdc00 70%, #00ffaa 100%);
+  
+  /* Interactive States */
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --active-bg: rgba(255, 255, 255, 0.1);
+  --focus-ring: #00d4ff;
+  
+  /* Component-specific */
+  --input-bg: rgba(17, 24, 39, 0.8);
+  --input-border: var(--border-subtle);
+  --input-focus-border: #00d4ff;
+  
+  --button-primary-bg: var(--gradient-primary);
+  --button-secondary-bg: rgba(0, 212, 255, 0.2);
+  --button-danger-bg: var(--gradient-error);
+  
+  --modal-backdrop: rgba(10, 14, 23, 0.8);
+  --modal-bg: var(--glass-bg);
+  
+  /* Rating Colors */
+  --rating-beginner: #00d4ff;
+  --rating-intermediate: #fbbf24;
+  --rating-advanced: #f97316;
+  --rating-expert: #ef4444;
+}

@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Africa Tennis Platform - Serverless Backend
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        SUPABASE_URL: !Ref SupabaseUrl
+        SUPABASE_SERVICE_ROLE_KEY: !Ref SupabaseServiceRoleKey
+        SES_EMAIL_SOURCE: !Ref SesEmailSource
+        FRONTEND_URL: !Ref FrontendUrl
+
+Parameters:
+  SupabaseUrl:
+    Type: String
+    Description: Supabase project URL
+  
+  SupabaseServiceRoleKey:
+    Type: String
+    Description: Supabase service role key
+    NoEcho: true
+  
+  SesEmailSource:
+    Type: String
+    Description: Email address to send notifications from
+    Default: info@africatennis.com
+  
+  FrontendUrl:
+    Type: String
+    Description: URL of the frontend application
+    Default: www.africatennis.com
+
+Resources:
+  # API Gateway
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+
+  # Functions pointing to the 'dist' directory where compiled code will be.
+  UpdateScoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/update-score/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /matches/{matchId}/score
+            Method: post
+
+  GenerateBracketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/generate-bracket/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /tournaments/{tournamentId}/generate-bracket
+            Method: post
+
+  SendNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/send-notification/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /notifications/new-match
+            Method: post
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: '*'
+
+  AggregateStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/aggregate-stats/
+      Handler: index.handler
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 2 * * ? *)
+            Name: DailyStatsAggregation
+            Description: Aggregates player statistics daily at 2 AM UTC
+
+  GetMatchesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/get-matches/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /matches
+            Method: get
+
+  GenerateMatchSummaryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/generate-match-summary/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /matches/{matchId}/generate-summary
+            Method: post
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: '*'
+
+  GeneratePlayerStyleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/generate-player-style/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /players/{playerId}/generate-style
+            Method: post
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: '*'
+
+  GetUmpireInsightFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/get-umpire-insight/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /matches/{matchId}/umpire-insight
+            Method: post
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: '*'
+
+  # Health check endpoint
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/health-check/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /health
+            Method: get
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/

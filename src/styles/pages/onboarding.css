@@ -1,0 +1,512 @@
+/* Modern Gradient Onboarding Page Styles */
+
+.onboarding-page-modern {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--onboarding-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.onboarding-page-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--onboarding-pattern);
+  opacity: 0.8;
+  pointer-events: none;
+  animation: gradientShift 8s ease-in-out infinite;
+}
+
+.onboarding-container-modern {
+  width: 100%;
+  max-width: 480px;
+  min-width: 320px;
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-card-modern {
+  background: var(--onboarding-card-bg);
+  border: 1px solid var(--onboarding-border);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  box-shadow: var(--onboarding-shadow);
+  backdrop-filter: blur(20px);
+  animation: slideInScale 0.8s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.onboarding-card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--onboarding-card-pattern);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+/* Header Section */
+.onboarding-header-modern {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.onboarding-logo {
+  margin-bottom: 1.5rem;
+}
+
+.logo-icon-modern {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: var(--onboarding-icon-bg);
+  border-radius: 20px;
+  color: var(--onboarding-icon-color);
+  margin-bottom: 1rem;
+  animation: float 3s ease-in-out infinite;
+  box-shadow: 0 8px 32px var(--onboarding-icon-shadow);
+}
+
+.onboarding-title-modern {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--onboarding-text-primary);
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.onboarding-subtitle-modern {
+  color: var(--onboarding-text-secondary);
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+/* Form Styles */
+.onboarding-form-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.onboarding-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.field-icon {
+  color: var(--onboarding-icon-accent);
+  flex-shrink: 0;
+}
+
+.field-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--onboarding-text-primary);
+}
+
+.onboarding-input-modern {
+  width: 100%;
+  height: 56px;
+  padding: 0 1.25rem;
+  background: var(--onboarding-input-bg);
+  border: 2px solid var(--onboarding-input-border);
+  border-radius: 16px;
+  color: var(--onboarding-text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.onboarding-input-modern::placeholder {
+  color: var(--onboarding-text-muted);
+  font-weight: 400;
+}
+
+.onboarding-input-modern:focus {
+  border-color: var(--onboarding-focus-color);
+  box-shadow: 0 0 0 4px var(--onboarding-focus-ring);
+  transform: translateY(-1px);
+}
+
+.onboarding-input-modern:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Skill Level Options */
+.skill-options-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skill-option-modern {
+  display: block;
+  padding: 1.25rem;
+  background: var(--onboarding-option-bg);
+  border: 2px solid var(--onboarding-option-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.skill-option-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--skill-color, var(--onboarding-option-hover));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.skill-option-modern:hover::before {
+  opacity: 0.05;
+}
+
+.skill-option-modern.selected::before {
+  opacity: 0.1;
+}
+
+.skill-option-modern:hover {
+  border-color: var(--skill-color, var(--onboarding-option-hover-border));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--onboarding-option-shadow);
+}
+
+.skill-option-modern.selected {
+  border-color: var(--skill-color, var(--onboarding-selected-border));
+  background: var(--onboarding-selected-bg);
+  box-shadow: 0 8px 32px var(--onboarding-selected-shadow);
+  transform: translateY(-1px);
+}
+
+.skill-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.skill-content-modern {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.skill-main {
+  flex: 1;
+}
+
+.skill-name-modern {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--onboarding-text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.skill-description-modern {
+  font-size: 0.875rem;
+  color: var(--onboarding-text-secondary);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.skill-rating-modern {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--onboarding-text-accent);
+  font-family: 'Monaco', 'Menlo', monospace;
+  background: var(--onboarding-rating-bg);
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--onboarding-rating-border);
+}
+
+.skill-indicator {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--onboarding-option-border);
+  border-radius: 50%;
+  background: var(--onboarding-option-bg);
+  transition: all 0.3s ease;
+  z-index: 3;
+}
+
+.skill-option-modern.selected .skill-indicator {
+  background: var(--skill-color, var(--onboarding-selected-indicator));
+  border-color: var(--skill-color, var(--onboarding-selected-indicator));
+  box-shadow: 0 0 0 3px var(--onboarding-indicator-ring);
+}
+
+.skill-option-modern.selected .skill-indicator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  transition: transform 0.2s ease;
+}
+
+/* Submit Button */
+.onboarding-submit-modern {
+  width: 100%;
+  height: 56px;
+  background: var(--onboarding-button-bg);
+  color: var(--onboarding-button-text);
+  border: none;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px var(--onboarding-button-shadow);
+}
+
+.onboarding-submit-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+
+.onboarding-submit-modern:hover::before {
+  left: 100%;
+}
+
+.onboarding-submit-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px var(--onboarding-button-hover-shadow);
+}
+
+.onboarding-submit-modern:active {
+  transform: translateY(0);
+}
+
+.onboarding-submit-modern:disabled {
+  background: var(--onboarding-disabled-bg);
+  color: var(--onboarding-disabled-text);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.onboarding-submit-modern:disabled::before {
+  display: none;
+}
+
+.loading-spinner-modern {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Animations */
+@keyframes slideInScale {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    transform: translateX(0%) translateY(0%);
+  }
+  25% {
+    transform: translateX(5%) translateY(-5%);
+  }
+  50% {
+    transform: translateX(-5%) translateY(5%);
+  }
+  75% {
+    transform: translateX(5%) translateY(5%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .onboarding-card-modern {
+    padding: 2rem 1.5rem;
+    margin: 0.5rem;
+    border-radius: 20px;
+  }
+
+  .onboarding-title-modern {
+    font-size: 1.75rem;
+  }
+
+  .onboarding-subtitle-modern {
+    font-size: 0.9rem;
+  }
+
+  .logo-icon-modern {
+    width: 70px;
+    height: 70px;
+  }
+
+  .onboarding-input-modern,
+  .onboarding-submit-modern {
+    height: 52px;
+    font-size: 0.9rem;
+  }
+
+  .skill-option-modern {
+    padding: 1rem;
+  }
+
+  .skill-content-modern {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .skill-rating-modern {
+    align-self: flex-end;
+  }
+
+  .skill-indicator {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .onboarding-card-modern {
+    padding: 1.5rem 1rem;
+  }
+
+  .onboarding-header-modern {
+    margin-bottom: 2rem;
+  }
+
+  .onboarding-form-modern {
+    gap: 1.5rem;
+  }
+
+  .logo-icon-modern {
+    width: 60px;
+    height: 60px;
+  }
+
+  .onboarding-title-modern {
+    font-size: 1.5rem;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .onboarding-card-modern {
+    border-width: 3px;
+  }
+
+  .onboarding-input-modern,
+  .skill-option-modern {
+    border-width: 3px;
+  }
+
+  .onboarding-submit-modern {
+    border: 3px solid var(--onboarding-button-bg);
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-card-modern,
+  .onboarding-input-modern,
+  .onboarding-submit-modern,
+  .skill-option-modern,
+  .logo-icon-modern {
+    animation: none;
+    transition: none;
+  }
+
+  .onboarding-submit-modern::before {
+    display: none;
+  }
+
+  .onboarding-page-modern::before {
+    animation: none;
+  }
+}
+
+/* Focus Visible */
+.onboarding-submit-modern:focus-visible,
+.skill-option-modern:focus-visible {
+  outline: 3px solid var(--onboarding-focus-color);
+  outline-offset: 2px;
+}
