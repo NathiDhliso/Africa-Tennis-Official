@@ -192,3 +192,10 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Page fade-in effect for route transitions */
+.app-main > *,
+.min-h-screen > * {
+  opacity: 0;
+  animation: fade-in 0.4s ease-out forwards;
+}
