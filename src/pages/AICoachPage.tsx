@@ -118,11 +118,11 @@ const AICoachPage: React.FC = () => {
       if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
         setError('AI Coach service is currently unavailable. Please ensure AWS Lambda functions are deployed and properly configured.');
       } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
-        setError('AI Coach service is experiencing technical difficulties. Please try again later.');
+        setError('Sorry, we couldn\'t generate your AI analysis at this time. Our AI Coach service may be temporarily unavailable or experiencing high demand. Please try again in a few minutes. If the problem persists, contact support or check your internet connection.');
       } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
         setError('AI Coach endpoint not found. Please verify the API configuration and deployment.');
       } else {
-        setError(`Failed to generate analysis: ${errorMessage}`);
+        setError('Sorry, we couldn\'t generate your AI analysis at this time. Our AI Coach service may be temporarily unavailable or experiencing high demand. Please try again in a few minutes. If the problem persists, contact support or check your internet connection.');
       }
     } finally {
       setIsGeneratingAnalysis(false);

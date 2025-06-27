@@ -317,7 +317,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       }, 10000);
     } catch (err: any) {
       console.error('Error getting umpire insight:', err);
-      setError(`Failed to get umpire insight: ${err.message}`);
+      setError('Oops! We couldn\'t fetch the AI umpire insight right now. This may be due to a temporary server issue or network problem. Please try again shortly. If this keeps happening, let us know through support.');
     } finally {
       setIsGeneratingInsight(false);
     }
