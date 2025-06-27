@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, X, Check } from 'lucide-react';
 
 interface CalendarDate {
@@ -8,32 +8,32 @@ interface CalendarDate {
   isSelected: boolean;
   selectionType?: 'start' | 'end';
   isInRange?: boolean;
+  isDisabled: boolean;
 }
 
 interface MultiSelectCalendarProps {
-  registrationDeadline?: Date | null;
-  startDate?: Date | null;
-  endDate?: Date | null;
-  onDateChange: (type: 'registration' | 'start' | 'end', date: Date) => void;
-  onClose: () => void;
-  minDate?: Date;
+  selectedDates: Date[];
+  onDatesChange: (dates: Date[]) => void;
+  minSelectableDates?: number;
+  maxSelectableDates?: number;
+  disabledDates?: Date[];
+  className?: string;
 }
 
 const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
-  registrationDeadline,
-  startDate,
-  endDate,
-  onDateChange,
-  onClose,
-  minDate = new Date()
+  selectedDates,
+  onDatesChange,
+  maxSelectableDates = 7,
+  disabledDates = [],
+  className = ''
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeSelection, setActiveSelection] = useState<'start' | 'end'>('start');
   const [showTimeSelector, setShowTimeSelector] = useState<{type: 'start' | 'end', date: Date} | null>(null);
   
   // Local state to track temporary selections before saving
-  const [tempStartDate, setTempStartDate] = useState<Date | null>(startDate || null);
-  const [tempEndDate, setTempEndDate] = useState<Date | null>(endDate || null);
+  const [tempStartDate, setTempStartDate] = useState<Date | null>(selectedDates[0] || null);
+  const [tempEndDate, setTempEndDate] = useState<Date | null>(selectedDates[selectedDates.length - 1] || null);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -41,6 +41,9 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
   ];
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const generateCalendarDates = (): CalendarDate[] => {
     const year = currentMonth.getFullYear();
@@ -52,8 +55,6 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
     const dates: CalendarDate[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
@@ -65,6 +66,7 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
       let isSelected = false;
       let selectionType: 'start' | 'end' | undefined;
       let isInRange = false;
+      let isDisabled = false;
 
       // Check if date matches any selected dates (using temp state)
       if (tempStartDate && isSameDay(date, tempStartDate)) {
@@ -80,13 +82,19 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
         isInRange = true;
       }
 
+      // Check if date is disabled
+      if (disabledDates.some(d => isSameDay(d, date))) {
+        isDisabled = true;
+      }
+
       dates.push({
         date,
         isCurrentMonth,
         isToday,
         isSelected,
         selectionType,
-        isInRange
+        isInRange,
+        isDisabled
       });
     }
 
@@ -100,8 +108,6 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
   };
 
   const isDateDisabled = (date: Date): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     return date < today;
   };
 
@@ -140,23 +146,23 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
   const handleSaveChanges = () => {
     // Apply all changes to the parent component
     if (tempStartDate) {
-      onDateChange('start', tempStartDate);
+      onDatesChange([tempStartDate]);
     }
     if (tempEndDate) {
-      onDateChange('end', tempEndDate);
+      onDatesChange([tempEndDate]);
     }
     
     // Close the modal
-    onClose();
+    setShowTimeSelector(null);
   };
 
   const handleCancel = () => {
     // Reset temporary state to original values
-    setTempStartDate(startDate || null);
-    setTempEndDate(endDate || null);
+    setTempStartDate(selectedDates[0] || null);
+    setTempEndDate(selectedDates[selectedDates.length - 1] || null);
     
     // Close the modal
-    onClose();
+    setShowTimeSelector(null);
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -192,8 +198,8 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
   // Check if we have all required dates selected
   const hasAllDates = tempStartDate && tempEndDate;
   const hasChanges = 
-    (tempStartDate?.getTime() !== startDate?.getTime()) ||
-    (tempEndDate?.getTime() !== endDate?.getTime());
+    (tempStartDate?.getTime() !== selectedDates[0]?.getTime()) ||
+    (tempEndDate?.getTime() !== selectedDates[selectedDates.length - 1]?.getTime());
 
   return (
     <div className="calendar-modal-backdrop">
@@ -278,7 +284,7 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
               <button
                 key={index}
                 onClick={() => handleDateClick(calendarDate.date)}
-                disabled={isDateDisabled(calendarDate.date)}
+                disabled={isDateDisabled(calendarDate.date) || calendarDate.isDisabled}
                 className={`calendar-date ${
                   !calendarDate.isCurrentMonth ? 'other-month' : ''
                 } ${

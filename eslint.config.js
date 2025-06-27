@@ -42,4 +42,68 @@ export default [
       ],
     },
   },
+  // Cypress test files configuration
+  {
+    files: ['cypress/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        cy: 'readonly',
+        Cypress: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        before: 'readonly',
+        after: 'readonly',
+        expect: 'readonly',
+        assert: 'readonly',
+        format: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs['recommended'].rules,
+      '@typescript-eslint/no-namespace': 'off',
+    },
+  },
+  // AWS Lambda test files configuration
+  {
+    files: ['aws/**/*.test.{ts,tsx}', 'aws/**/__tests__/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+        jest: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        before: 'readonly',
+        after: 'readonly',
+        expect: 'readonly',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs['recommended'].rules,
+    },
+  },
 ];

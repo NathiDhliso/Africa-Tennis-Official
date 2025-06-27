@@ -26,7 +26,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // Check if Bedrock is available
     let bedrockStatus = 'unknown';
     try {
-      const bedrockClient = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-west-2' });
+      new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-west-2' });
       bedrockStatus = 'available';
     } catch (error) {
       console.error('Bedrock client initialization error:', error);

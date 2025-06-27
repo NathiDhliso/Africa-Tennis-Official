@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Trophy, 
-  Calendar, 
   BarChart3, 
   Settings, 
   Menu, 

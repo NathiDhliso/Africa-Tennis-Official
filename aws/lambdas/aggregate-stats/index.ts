@@ -1,173 +1,180 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const handler = async (): Promise<any> => {
+export const handler = async (event: { queryStringParameters?: Record<string, string> }): Promise<{
+  statusCode: number;
+  headers: Record<string, string>;
+  body: string;
+}> => {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
   try {
-    // Initialize Supabase client with service role key to bypass RLS
+    // Handle preflight requests
+    if (event.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 200,
+        headers,
+        body: ''
+      };
+    }
+
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Server configuration error: Missing Supabase credentials');
+      throw new Error('Missing Supabase configuration');
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Fetch all profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('user_id, username, elo_rating');
-
-    if (profilesError) {
-      throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
+    // Extract player_id from query parameters
+    const playerId = event.queryStringParameters?.player_id;
+    
+    if (!playerId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'player_id is required'
+        })
+      };
     }
 
-    console.log(`Processing statistics for ${profiles.length} players`);
+    // Fetch player profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', playerId)
+      .single();
 
-    // 2. Process each profile
-    const results = await Promise.all(profiles.map(async (profile) => {
-      try {
-        // Fetch all completed matches for this player
+    if (profileError) {
+      throw new Error(`Failed to fetch player profile: ${profileError.message}`);
+    }
+
+    // Fetch all matches for the player
         const { data: matches, error: matchesError } = await supabase
           .from('matches')
-          .select(`
-            *,
-            player1:profiles!matches_player1_id_fkey(user_id, elo_rating),
-            player2:profiles!matches_player2_id_fkey(user_id, elo_rating)
-          `)
-          .or(`player1_id.eq.${profile.user_id},player2_id.eq.${profile.user_id}`)
+      .select('*')
+      .or(`player1_id.eq.${playerId},player2_id.eq.${playerId}`)
           .eq('status', 'completed');
 
         if (matchesError) {
-          throw new Error(`Failed to fetch matches for ${profile.username}: ${matchesError.message}`);
+      throw new Error(`Failed to fetch matches: ${matchesError.message}`);
         }
 
-        // Skip if no matches
-        if (!matches || matches.length === 0) {
-          return {
-            user_id: profile.user_id,
-            username: profile.username,
-            matches_processed: 0,
-            status: 'skipped',
-            message: 'No completed matches found'
-          };
+    // Calculate win rate statistics
+    const totalMatches = matches?.length || 0;
+    const wins = matches?.filter((match: { winner_id: string | null }) => match.winner_id === playerId).length || 0;
+    const winRate = totalMatches > 0 ? (wins / totalMatches) * 100 : 0;
+
+    // Calculate recent form (last 10 matches)
+    const recentMatches = matches?.slice(-10) || [];
+    const recentWins = recentMatches.filter((match: { winner_id: string | null }) => match.winner_id === playerId).length;
+    const recentForm = recentMatches.length > 0 ? (recentWins / recentMatches.length) * 100 : 0;
+
+    // Calculate opponent ELO statistics
+    const opponentElos: number[] = [];
+    
+    for (const match of matches || []) {
+      const opponentId = match.player1_id === playerId ? match.player2_id : match.player1_id;
+      
+      try {
+        const { data: opponentProfile } = await supabase
+          .from('profiles')
+          .select('elo_rating')
+          .eq('user_id', opponentId)
+          .single();
+        
+        if (opponentProfile?.elo_rating) {
+          opponentElos.push(opponentProfile.elo_rating);
         }
+      } catch (error) {
+        console.warn(`Failed to fetch opponent ELO for ${opponentId}:`, error);
+        }
+    }
 
-        // Calculate statistics
-        const stats = calculateAdvancedStats(profile.user_id, matches, profile.elo_rating);
+    const avgOpponentElo = opponentElos.length > 0 
+      ? opponentElos.reduce((sum, elo) => sum + elo, 0) / opponentElos.length 
+      : profile.elo_rating;
 
-        // Update player_stats table
+    // Separate wins against higher and lower ELO opponents
+    const playerElo = profile.elo_rating;
+    let winsVsHigher = 0;
+    let matchesVsHigher = 0;
+    let winsVsLower = 0;
+    let matchesVsLower = 0;
+
+    for (let i = 0; i < (matches?.length || 0); i++) {
+      const match = matches![i];
+      const opponentElo = opponentElos[i];
+      
+      if (!opponentElo) continue;
+      
+      if (opponentElo > playerElo) {
+        matchesVsHigher++;
+        if (match.winner_id === playerId) winsVsHigher++;
+      } else if (opponentElo < playerElo) {
+        matchesVsLower++;
+        if (match.winner_id === playerId) winsVsLower++;
+      }
+    }
+
+    const winRateVsHigherElo = matchesVsHigher > 0 ? (winsVsHigher / matchesVsHigher) * 100 : 0;
+    const winRateVsLowerElo = matchesVsLower > 0 ? (winsVsLower / matchesVsLower) * 100 : 0;
+
+    // Update or insert player stats
+    const statsData = {
+      user_id: playerId,
+      win_rate_vs_higher_elo: winRateVsHigherElo,
+      win_rate_vs_lower_elo: winRateVsLowerElo,
+      avg_tournament_placement: 0, // Placeholder - would need tournament data
+      last_calculated_at: new Date().toISOString()
+    };
+
         const { error: upsertError } = await supabase
           .from('player_stats')
-          .upsert({
-            user_id: profile.user_id,
-            win_rate_vs_higher_elo: stats.winRateVsHigherElo,
-            win_rate_vs_lower_elo: stats.winRateVsLowerElo,
-            avg_tournament_placement: stats.avgTournamentPlacement,
-            last_calculated_at: new Date().toISOString()
-          });
+      .upsert(statsData);
 
         if (upsertError) {
-          throw new Error(`Failed to update stats for ${profile.username}: ${upsertError.message}`);
-        }
-
-        return {
-          user_id: profile.user_id,
-          username: profile.username,
-          matches_processed: matches.length,
-          status: 'success'
-        };
-      } catch (error: any) {
-        console.error(`Error processing player ${profile.username}:`, error);
-        return {
-          user_id: profile.user_id,
-          username: profile.username,
-          status: 'error',
-          error: error.message
-        };
+      throw new Error(`Failed to update player stats: ${upsertError.message}`);
       }
-    }));
-
-    // Count successes and failures
-    const successes = results.filter(r => r.status === 'success').length;
-    const errors = results.filter(r => r.status === 'error').length;
-    const skipped = results.filter(r => r.status === 'skipped').length;
 
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({
-        message: 'Player statistics aggregation completed',
-        summary: {
-          total: profiles.length,
-          processed: successes,
-          errors,
-          skipped
-        },
-        timestamp: new Date().toISOString()
+        success: true,
+        data: {
+          playerId,
+          totalMatches,
+          wins,
+          winRate: Math.round(winRate * 100) / 100,
+          recentForm: Math.round(recentForm * 100) / 100,
+          avgOpponentElo: Math.round(avgOpponentElo),
+          winRateVsHigherElo: Math.round(winRateVsHigherElo * 100) / 100,
+          winRateVsLowerElo: Math.round(winRateVsLowerElo * 100) / 100,
+          lastCalculated: statsData.last_calculated_at
+        }
       })
     };
-  } catch (error: any) {
-    console.error('Unexpected error during stats aggregation:', error);
+
+  } catch (error: unknown) {
+    console.error('Error in aggregate-stats:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ 
-        error: 'An unexpected error occurred during stats aggregation',
-        message: error.message
+        success: false,
+        error: errorMessage
       })
     };
   }
 };
-
-// Helper function to calculate advanced statistics
-function calculateAdvancedStats(
-  playerId: string, 
-  matches: any[], 
-  playerElo: number
-): { 
-  winRateVsHigherElo: number, 
-  winRateVsLowerElo: number, 
-  avgTournamentPlacement: number 
-} {
-  // Initialize counters
-  let matchesVsHigherElo = 0;
-  let winsVsHigherElo = 0;
-  let matchesVsLowerElo = 0;
-  let winsVsLowerElo = 0;
-  
-  // Process each match
-  matches.forEach(match => {
-    const isPlayer1 = match.player1_id === playerId;
-    const opponent = isPlayer1 ? match.player2 : match.player1;
-    const opponentElo = opponent?.elo_rating || 1200;
-    const isWinner = match.winner_id === playerId;
-    
-    if (opponentElo > playerElo) {
-      // Match against higher-rated opponent
-      matchesVsHigherElo++;
-      if (isWinner) winsVsHigherElo++;
-    } else {
-      // Match against lower-rated or equal opponent
-      matchesVsLowerElo++;
-      if (isWinner) winsVsLowerElo++;
-    }
-  });
-  
-  // Calculate win rates
-  const winRateVsHigherElo = matchesVsHigherElo > 0 
-    ? (winsVsHigherElo / matchesVsHigherElo) * 100 
-    : 0;
-    
-  const winRateVsLowerElo = matchesVsLowerElo > 0 
-    ? (winsVsLowerElo / matchesVsLowerElo) * 100 
-    : 0;
-  
-  // For tournament placement, we would need to fetch tournament data
-  // This is a placeholder - in a real implementation, you would calculate this
-  // based on actual tournament results
-  const avgTournamentPlacement = 0;
-  
-  return {
-    winRateVsHigherElo,
-    winRateVsLowerElo,
-    avgTournamentPlacement
-  };
-}

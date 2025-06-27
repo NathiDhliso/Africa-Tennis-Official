@@ -160,8 +160,22 @@ export interface Database {
           event_type: 'move' | 'capture' | 'check' | 'checkmate' | 'draw' | 'resignation' | 'timeout'
           player_id: string
           description: string
-          score_snapshot: any
-          metadata: any | null
+          score_snapshot: {
+            player1_sets: number
+            player2_sets: number
+            player1_games: number
+            player2_games: number
+            player1_points: number
+            player2_points: number
+            current_set: number
+            current_game: number
+          }
+          metadata: {
+            point_type?: string
+            shot_type?: string
+            court_position?: string
+            [key: string]: unknown
+          } | null
           created_at: string
         }
         Insert: {
@@ -171,8 +185,22 @@ export interface Database {
           event_type: 'move' | 'capture' | 'check' | 'checkmate' | 'draw' | 'resignation' | 'timeout'
           player_id: string
           description: string
-          score_snapshot: any
-          metadata?: any | null
+          score_snapshot: {
+            player1_sets: number
+            player2_sets: number
+            player1_games: number
+            player2_games: number
+            player1_points: number
+            player2_points: number
+            current_set: number
+            current_game: number
+          }
+          metadata?: {
+            point_type?: string
+            shot_type?: string
+            court_position?: string
+            [key: string]: unknown
+          } | null
           created_at?: string
         }
         Update: {
@@ -181,8 +209,22 @@ export interface Database {
           event_type?: 'move' | 'capture' | 'check' | 'checkmate' | 'draw' | 'resignation' | 'timeout'
           player_id?: string
           description?: string
-          score_snapshot?: any
-          metadata?: any | null
+          score_snapshot?: {
+            player1_sets: number
+            player2_sets: number
+            player1_games: number
+            player2_games: number
+            player1_points: number
+            player2_points: number
+            current_set: number
+            current_game: number
+          }
+          metadata?: {
+            point_type?: string
+            shot_type?: string
+            court_position?: string
+            [key: string]: unknown
+          } | null
         }
       }
       player_stats: {

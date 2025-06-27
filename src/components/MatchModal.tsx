@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, MapPin, Users, Clock, Target, Search, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserService } from '../services/UserService';
-import { MatchService } from '../services/MatchService';
 import { User as UserType } from '../types';
 
 interface MatchModalProps {
@@ -22,10 +20,9 @@ const MatchModal: React.FC<MatchModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [availablePlayers, setAvailablePlayers] = useState<UserType[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filteredPlayers, setFilteredPlayers] = useState<UserType[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<UserType | null>(preselectedPlayer || null);
-  const [showPlayerSearch, setShowPlayerSearch] = useState(!preselectedPlayer);
   
   const [formData, setFormData] = useState({
     date: '',
@@ -40,36 +37,28 @@ const MatchModal: React.FC<MatchModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const loadAvailablePlayers = useCallback(async () => {
+    // Mock players for now - replace with actual service call
+    const mockPlayers: UserType[] = [];
+    const filtered = mockPlayers.filter((player: UserType) => player.id !== user?.id);
+    setAvailablePlayers(filtered);
+  }, [user]);
+
+  const filterPlayers = useCallback(() => {
+    const filtered = availablePlayers.filter((player: UserType) =>
+      player.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      player.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredPlayers(filtered);
+  }, [availablePlayers, searchTerm]);
+
   useEffect(() => {
-    if (isOpen) {
-      loadAvailablePlayers();
-    }
-  }, [user, isOpen]);
+    loadAvailablePlayers();
+  }, [loadAvailablePlayers]);
 
   useEffect(() => {
     filterPlayers();
-  }, [searchQuery, availablePlayers]);
-
-  const loadAvailablePlayers = () => {
-    const allPlayers = UserService.getAllPlayers();
-    const filtered = allPlayers.filter(player => player.id !== user?.id);
-    setAvailablePlayers(filtered);
-  };
-
-  const filterPlayers = () => {
-    if (!searchQuery.trim()) {
-      setFilteredPlayers(availablePlayers.slice(0, 8));
-      return;
-    }
-
-    const filtered = availablePlayers.filter(player =>
-      player.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      player.skillLevel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (player.location && player.location.toLowerCase().includes(searchQuery.toLowerCase()))
-    ).slice(0, 8);
-
-    setFilteredPlayers(filtered);
-  };
+  }, [filterPlayers]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -118,12 +107,13 @@ const MatchModal: React.FC<MatchModalProps> = ({
       const matchDateTime = new Date(`${formData.date}T${formData.time}`);
       const locationWithDetails = `${formData.location}${formData.courtType !== 'hard' ? ` (${formData.courtType} court)` : ''}`;
       
-      MatchService.createMatch(
-        user.id,
-        selectedPlayer.id,
-        matchDateTime.toISOString(),
-        locationWithDetails
-      );
+      // TODO: Replace with actual service call
+      console.log('Creating match:', {
+        user: user.id,
+        player: selectedPlayer.id,
+        date: matchDateTime.toISOString(),
+        location: locationWithDetails
+      });
 
       onMatchCreated();
       onClose();
@@ -162,10 +152,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
   };
 
   // Generate default date and time (tomorrow at 10 AM)
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const defaultDate = tomorrow.toISOString().slice(0, 10);
-  const defaultTime = '10:00';
+  const currentDate = new Date();
 
   if (!isOpen) return null;
 
@@ -212,7 +199,6 @@ const MatchModal: React.FC<MatchModalProps> = ({
                     type="button"
                     onClick={() => {
                       setSelectedPlayer(null);
-                      setShowPlayerSearch(true);
                     }}
                     className="match-change-player-btn"
                   >
@@ -225,8 +211,8 @@ const MatchModal: React.FC<MatchModalProps> = ({
                     <Search size={20} className="search-icon" />
                     <input
                       type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       className="form-input search-input"
                       placeholder="Search players by name, skill level, or location..."
                     />
@@ -238,7 +224,6 @@ const MatchModal: React.FC<MatchModalProps> = ({
                         key={player.id}
                         onClick={() => {
                           setSelectedPlayer(player);
-                          setShowPlayerSearch(false);
                         }}
                         className="match-player-card"
                       >
@@ -285,7 +270,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
                 value={formData.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
                 className="form-input"
-                min={defaultDate}
+                min={currentDate.toISOString().slice(0, 10)}
                 required
               />
               {errors.date && <p className="text-error-pink text-sm mt-1">{errors.date}</p>}

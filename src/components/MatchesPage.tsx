@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, Calendar, Clock, Trophy, Target, Plus, ArrowLeft, Swords, ChevronDown, ChevronUp, MapPin, Users, Timer, Award, TrendingUp, Eye, Loader } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, Filter, Calendar, MapPin, Clock, Target, Swords, ChevronDown, ChevronUp, ArrowLeft, Users, Timer, Award, TrendingUp, Eye, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { MatchService } from '../services/MatchService';
-import { UserService } from '../services/UserService';
 import { Match } from '../types';
 import MatchCard from './MatchCard';
 import ScoreModal from './ScoreModal';
 import MatchModal from './MatchModal';
 import MatchDetailsPage from './MatchDetailsPage';
+import { useNavigate } from 'react-router-dom';
 
 interface ExpandedMatchData {
   venue: {
@@ -53,17 +52,12 @@ const MatchesPage: React.FC = () => {
   const [loadingMatchData, setLoadingMatchData] = useState<Set<string>>(new Set());
   const [matchData, setMatchData] = useState<Map<string, ExpandedMatchData>>(new Map());
 
-  useEffect(() => {
-    loadMatches();
-  }, [user]);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    filterMatches();
-  }, [matches, searchQuery, statusFilter, timeFilter]);
-
-  const loadMatches = () => {
+  const loadMatches = useCallback(async () => {
     if (user) {
-      const userMatches = MatchService.getUserMatches(user.id);
+      // Mock data for now - replace with actual service call
+      const userMatches: Match[] = [];
       const now = new Date();
       
       // Separate upcoming and recent matches
@@ -92,9 +86,9 @@ const MatchesPage: React.FC = () => {
       });
       setMatches(sortedMatches);
     }
-  };
+  }, [user]);
 
-  const filterMatches = () => {
+  const filterMatches = useCallback(() => {
     let filtered = matches;
     const now = new Date();
 
@@ -119,22 +113,25 @@ const MatchesPage: React.FC = () => {
     // Apply search filter
     if (searchQuery.trim()) {
       filtered = filtered.filter(match => {
-        const opponent = UserService.getPlayerById(
-          match.challengerId === user?.id ? match.challengedId : match.challengerId
-        );
-        return opponent?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-               match.location.toLowerCase().includes(searchQuery.toLowerCase());
+        // Mock opponent search - replace with actual service call
+        return match.location.toLowerCase().includes(searchQuery.toLowerCase());
       });
     }
 
     setFilteredMatches(filtered);
-  };
+  }, [matches, searchQuery, statusFilter, timeFilter, user?.id]);
 
-  const generateMockMatchData = (match: Match): ExpandedMatchData => {
-    const opponent = UserService.getPlayerById(
-      match.challengerId === user?.id ? match.challengedId : match.challengerId
-    );
-    
+  useEffect(() => {
+    if (user?.id) {
+      loadMatches();
+    }
+  }, [user?.id, loadMatches]);
+
+  useEffect(() => {
+    filterMatches();
+  }, [filterMatches]);
+
+  const generateMockMatchData = (): ExpandedMatchData => {
     // Generate mock venue data
     const venues = [
       { name: 'Elite Tennis Academy', location: 'Sandton, Johannesburg', capacity: 500, facilities: ['Pro Shop', 'Locker Rooms', 'Parking', 'Café'] },
@@ -162,7 +159,7 @@ const MatchesPage: React.FC = () => {
         lastMatch: totalMatches > 0 ? {
           date: lastMatchDate.toLocaleDateString(),
           score: `${Math.floor(Math.random() * 7)}-${Math.floor(Math.random() * 7)}`,
-          winner: Math.random() > 0.5 ? user?.name || 'You' : opponent?.name || 'Opponent'
+          winner: Math.random() > 0.5 ? 'You' : 'Opponent'
         } : undefined
       },
       ticketInfo: Math.random() > 0.7 ? {
@@ -188,12 +185,9 @@ const MatchesPage: React.FC = () => {
         // Simulate API call delay
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        const match = matches.find(m => m.id === matchId);
-        if (match) {
-          const data = generateMockMatchData(match);
-          setMatchData(prev => new Map(prev).set(matchId, data));
-        }
-        
+        const data = generateMockMatchData();
+        setMatchData(prev => new Map(prev).set(matchId, data));
+
         setLoadingMatchData(prev => {
           const newSet = new Set(prev);
           newSet.delete(matchId);
@@ -212,7 +206,8 @@ const MatchesPage: React.FC = () => {
 
   const handleScoreSubmit = (challengerScore: number, challengedScore: number) => {
     if (selectedMatch) {
-      MatchService.reportScore(selectedMatch.id, challengerScore, challengedScore);
+      // Mock score submission - replace with actual service call
+      console.log(`Score submitted: Challenger ${challengerScore}, Challenged ${challengedScore}`);
       setShowScoreModal(false);
       setSelectedMatch(null);
       loadMatches();
@@ -301,9 +296,8 @@ const MatchesPage: React.FC = () => {
             </h2>
             <div className="matches-accordion-grid">
               {upcomingMatches.map((match) => {
-                const opponent = UserService.getPlayerById(
-                  match.challengerId === user?.id ? match.challengedId : match.challengerId
-                );
+                        // Mock opponent - replace with actual service call
+        const opponent = { name: 'Unknown Player' };
                 const isExpanded = expandedMatches.has(match.id);
                 const isLoading = loadingMatchData.has(match.id);
                 const data = matchData.get(match.id);
@@ -524,6 +518,8 @@ const MatchesPage: React.FC = () => {
                     match={match}
                     currentUserId={user?.id || ''}
                     onReportScore={() => handleReportScore(match)}
+                    onViewDetails={() => navigate(`/matches/${match.id}`)}
+                    onActionComplete={loadMatches}
                   />
                 ))
               ) : (

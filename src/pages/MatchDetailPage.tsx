@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuthStore } from '../stores/authStore';
 import MatchDetailsPage from '../components/MatchDetailsPage';
-import type { Database } from '../types/database';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Match } from '../types';
 
@@ -13,11 +11,8 @@ const MatchDetailPage: React.FC = () => {
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const { user } = useAuthStore();
 
-  useEffect(() => {
-    const fetchMatchDetails = async () => {
+  const fetchMatchDetails = useCallback(async () => {
       if (!matchId) return;
       
       setLoading(true);
@@ -68,16 +63,18 @@ const MatchDetailPage: React.FC = () => {
           
           setMatch(convertedMatch);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching match details:', err);
-        setError(err.message);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
-    };
+    }, [matchId]);
 
+  useEffect(() => {
     fetchMatchDetails();
-  }, [matchId]);
+  }, [fetchMatchDetails]);
 
   const handleBack = () => {
     navigate('/matches');
@@ -108,7 +105,7 @@ const MatchDetailPage: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [matchId]);
+  }, [matchId, fetchMatchDetails]);
 
   if (loading) {
     return (

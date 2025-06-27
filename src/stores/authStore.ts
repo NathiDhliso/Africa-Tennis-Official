@@ -83,16 +83,17 @@ export const useAuthStore = create<AuthState>()(
           });
           
           await get().fetchProfile();
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({ loading: false });
-          throw new Error(error.message || 'Sign in failed');
+          const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
+          throw new Error(errorMessage);
         }
       },
 
       signUp: async (email: string, password: string, username: string) => {
         set({ loading: true });
         try {
-          const { data, error } = await supabase.auth.signUp({
+          const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -105,9 +106,10 @@ export const useAuthStore = create<AuthState>()(
           if (error) throw error;
 
           set({ loading: false });
-        } catch (error: any) {
+        } catch (error: unknown) {
           set({ loading: false });
-          throw new Error(error.message || 'Sign up failed');
+          const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
+          throw new Error(errorMessage);
         }
       },
 
@@ -121,8 +123,9 @@ export const useAuthStore = create<AuthState>()(
             profile: null, 
             session: null 
           });
-        } catch (error: any) {
-          throw new Error(error.message || 'Sign out failed');
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Sign out failed';
+          throw new Error(errorMessage);
         }
       },
 
@@ -139,7 +142,7 @@ export const useAuthStore = create<AuthState>()(
 
           if (error) throw error;
           set({ profile: data });
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Error fetching profile:', error);
         }
       },
@@ -158,8 +161,9 @@ export const useAuthStore = create<AuthState>()(
 
           if (error) throw error;
           set({ profile: data });
-        } catch (error: any) {
-          throw new Error(error.message || 'Profile update failed');
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Profile update failed';
+          throw new Error(errorMessage);
         }
       }
     }),

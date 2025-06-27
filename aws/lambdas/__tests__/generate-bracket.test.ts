@@ -1,9 +1,8 @@
 import { handler } from '../generate-bracket/index';
-import { createClient } from '@supabase/supabase-js';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
-// Define a flexible mock structure
-const fromMocks: Record<string, any> = {};
+// Define a flexible mock structure with proper typing  
+const fromMocks: Record<string, unknown> = {};
 const mockSupabaseClient = {
   from: jest.fn((tableName: string) => fromMocks[tableName]),
 };

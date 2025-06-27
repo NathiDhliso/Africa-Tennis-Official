@@ -14,6 +14,18 @@ export interface User {
   isOnboarded: boolean;
 }
 
+export interface TennisScore {
+  player1_sets: number;
+  player2_sets: number;
+  player1_games: number;
+  player2_games: number;
+  player1_points: number;
+  player2_points: number;
+  current_set: number;
+  current_game: number;
+  serving_player?: 'player1' | 'player2';
+}
+
 export interface Match {
   id: string;
   challengerId: string;
@@ -29,7 +41,7 @@ export interface Match {
   winnerProfile?: { username: string };
   createdAt: string;
   detailedStatsId?: string; // Link to detailed statistics
-  score?: any; // JSONB score object for tennis scoring
+  score?: TennisScore; // Proper tennis score object
   scoreDisplay?: string | null; // Formatted score string for display
   tournamentId?: string; // ID of the tournament this match belongs to
 }

@@ -1,17 +1,21 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import type { User } from '@supabase/supabase-js';
+import type { Database } from '../types/database';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface AuthContextProps {
   children: ReactNode;
 }
 
 interface AuthContextValue {
-  user: any;
-  profile: any;
+  user: User | null;
+  profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: any) => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);

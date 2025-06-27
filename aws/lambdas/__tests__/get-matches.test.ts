@@ -1,5 +1,4 @@
 import { handler } from '../get-matches/index';
-import { createClient } from '@supabase/supabase-js';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
 // Mock the Supabase client

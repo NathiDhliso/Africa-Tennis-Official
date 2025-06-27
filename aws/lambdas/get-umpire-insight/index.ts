@@ -2,6 +2,22 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { createClient } from '@supabase/supabase-js';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
+// Type definitions for tennis score and Bedrock responses
+interface TennisSet {
+  player1_games: number;
+  player2_games: number;
+}
+
+interface BedrockContentItem {
+  type: 'text';
+  text: string;
+}
+
+interface BedrockResponse {
+  content?: BedrockContentItem[];
+  completion?: string;
+}
+
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,7 +123,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         // Get set scores
         const sets = currentScore.sets || [];
         if (sets.length > 0) {
-          currentSetScore = sets.map((set: any) => 
+          currentSetScore = sets.map((set: TennisSet) => 
             `${set.player1_games}-${set.player2_games}`
           ).join(', ');
         }
@@ -171,7 +187,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const bedrockResponse = await bedrockClient.send(command);
     
     // Parse the response
-    const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
+    const responseBody: BedrockResponse = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
     console.log('Bedrock response:', JSON.stringify(responseBody, null, 2));
     
     let generatedInsight = '';
@@ -180,8 +196,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (responseBody.content && Array.isArray(responseBody.content)) {
       // Claude 3 format
       generatedInsight = responseBody.content
-        .filter((item: any) => item.type === 'text')
-        .map((item: any) => item.text)
+        .filter((item: BedrockContentItem) => item.type === 'text')
+        .map((item: BedrockContentItem) => item.text)
         .join('');
     } else if (responseBody.completion) {
       // Claude 2 format
@@ -206,15 +222,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         }
       })
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       statusCode: 500,
       headers: corsHeaders,
       body: JSON.stringify({ 
         success: false, 
         error: 'An unexpected error occurred',
-        details: error.message
+        details: errorMessage
       })
     };
   }

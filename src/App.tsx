@@ -53,7 +53,7 @@ initSentry();
 // Create a client
 const queryClient = new QueryClient();
 
-const AppRoutes = ({ user }: { user: any }) => {
+const AppRoutes = ({ user }: { user: unknown }) => {
   if (user) {
     return (
       <div className="app-layout">
@@ -105,16 +105,21 @@ function App() {
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
   }
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <AppRoutes user={user} />
-        </ThemeProvider>
-      </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  );
+  try {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <AppRoutes user={user} />
+          </ThemeProvider>
+        </AuthProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    );
+  } catch (error: unknown) {
+    console.error('Error in App component:', error);
+    return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
+  }
 }
 
 export default App;

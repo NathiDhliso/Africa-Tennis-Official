@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -9,10 +9,8 @@ import {
   TrendingUp,
   BarChart3,
   Play,
-  Pause,
   Award,
   Users,
-  Timer,
   Activity,
   Zap,
   Star
@@ -21,12 +19,22 @@ import { Match } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import MatchRequestActions from './matches/MatchRequestActions';
 import LoadingSpinner from './LoadingSpinner';
+import { supabase } from '../lib/supabase';
+import type { Database } from '../types/database';
+
+type Match = Database['public']['Tables']['matches']['Row'];
 
 interface MatchDetailsPageProps {
   match: Match;
   onBack: () => void;
   onActionComplete?: () => void;
   onStartScoring?: () => void;
+}
+
+interface PlayerProfile {
+  username: string;
+  elo_rating: number;
+  [key: string]: unknown;
 }
 
 interface MatchStatistics {
@@ -64,39 +72,41 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
 }) => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'statistics' | 'timeline' | 'highlights'>('overview');
-  const [player1Profile, setPlayer1Profile] = useState<any>(null);
-  const [player2Profile, setPlayer2Profile] = useState<any>(null);
+  const [player1Profile, setPlayer1Profile] = useState<PlayerProfile | null>(null);
+  const [player2Profile, setPlayer2Profile] = useState<PlayerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statistics, setStatistics] = useState<MatchStatistics | null>(null);
   const [timeline, setTimeline] = useState<MatchTimeline[]>([]);
   const [highlights, setHighlights] = useState<MatchHighlight[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   // Determine which player is the current user and which is the opponent
-  const isUserChallenger = match.challengerId === user?.id;
-  const opponent = isUserChallenger ? match.player2 : match.player1;
-  const currentUser = isUserChallenger ? match.player1 : match.player2;
+  const isUserChallenger = match.player1_id === user?.id;
+  const opponent = isUserChallenger ? match.player2_id : match.player1_id;
+  const currentUser = isUserChallenger ? match.player1_id : match.player2_id;
 
   const matchDate = new Date(match.date);
   const isCompleted = match.status === 'completed';
 
-  useEffect(() => {
-    loadMatchData();
-  }, [match.id]);
-
-  const loadMatchData = async () => {
-    setIsLoading(true);
+  const loadMatchData = useCallback(async () => {
+    if (!match.id) return;
     
+    setIsLoading(true);
     try {
-      // Set player profiles from match data
-      setPlayer1Profile({
-        name: match.player1?.username || 'Player 1',
-        rating: match.player1?.elo_rating || 1200
-      });
-      
-      setPlayer2Profile({
-        name: match.player2?.username || 'Player 2',
-        rating: match.player2?.elo_rating || 1200
-      });
+      const { data: matchData, error } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          player1:profiles!matches_player1_id_fkey(username, elo_rating),
+          player2:profiles!matches_player2_id_fkey(username, elo_rating)
+        `)
+        .eq('id', match.id)
+        .single();
+
+      if (error) throw error;
+
+      setPlayer1Profile(matchData.player1 as PlayerProfile);
+      setPlayer2Profile(matchData.player2 as PlayerProfile);
 
       // Generate mock statistics as fallback
       const mockStats: MatchStatistics = {
@@ -136,10 +146,10 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
       // Generate mock timeline
       const mockTimeline: MatchTimeline[] = [
         { time: '0:05', event: 'Match Start', player: 'System', description: 'Match begins', type: 'game' },
-        { time: '0:12', event: 'Ace', player: player1Profile?.name || 'You', description: 'Service ace down the T', type: 'ace' },
-        { time: '0:28', event: 'Winner', player: player2Profile?.name || 'Opponent', description: 'Forehand winner cross-court', type: 'winner' },
-        { time: '0:45', event: 'Break Point', player: player1Profile?.name || 'You', description: 'Break point converted', type: 'break' },
-        { time: '1:15', event: 'Set Won', player: isUserChallenger && match.challengerScore ? (match.challengerScore > (match.challengedScore || 0) ? player1Profile?.name || 'You' : player2Profile?.name || 'Opponent') : 'Unknown', description: 'First set completed', type: 'set' },
+        { time: '0:12', event: 'Ace', player: player1Profile?.username || 'You', description: 'Service ace down the T', type: 'ace' },
+        { time: '0:28', event: 'Winner', player: player2Profile?.username || 'Opponent', description: 'Forehand winner cross-court', type: 'winner' },
+        { time: '0:45', event: 'Break Point', player: player1Profile?.username || 'You', description: 'Break point converted', type: 'break' },
+        { time: '1:15', event: 'Set Won', player: 'Unknown', description: 'First set completed', type: 'set' },
       ];
       
       // Generate mock highlights
@@ -177,16 +187,17 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
       setStatistics(mockStats);
       setTimeline(mockTimeline);
       setHighlights(mockHighlights);
-    } catch (error) {
-      console.error('Error loading match data:', error);
-      // Set empty data on error
-      setStatistics(null);
-      setTimeline([]);
-      setHighlights([]);
+    } catch (error: unknown) {
+      console.error('Error loading match:', error);
+      setError('Failed to load match details');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
-  };
+  }, [match.id, isUserChallenger, match.player1_id, match.player2_id, player1Profile?.username, player2Profile?.username]);
+
+  useEffect(() => {
+    loadMatchData();
+  }, [loadMatchData]);
 
   const getStatusColor = (status: Match['status']) => {
     switch (status) {
@@ -226,20 +237,17 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
 
   // Format score for display
   const getFormattedScore = () => {
-    if (match.challengerScore !== undefined && match.challengedScore !== undefined) {
-      return `${isUserChallenger ? match.challengerScore : match.challengedScore} - ${isUserChallenger ? match.challengedScore : match.challengerScore}`;
-    }
-    
     if (typeof match.score === 'string') {
       return match.score;
     } 
     
     if (match.score && typeof match.score === 'object') {
       try {
-        const sets = match.score.sets || [];
+        const scoreObj = match.score as Record<string, unknown>;
+        const sets = scoreObj.sets as Array<Record<string, number>> || [];
         if (sets.length === 0) return 'No sets played';
         
-        return sets.map((set: any) => 
+        return sets.map((set: Record<string, number>) => 
           `${set.player1_games}-${set.player2_games}`
         ).join(', ');
       } catch (err) {
@@ -259,12 +267,12 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
           <h3 className="match-details-section-title">Final Score</h3>
           <div className="match-score-display">
             <div className="match-score-player">
-              <div className="match-score-name">{isUserChallenger ? player1Profile.name : player2Profile.name}</div>
+              <div className="match-score-name">{isUserChallenger ? player1Profile.username : player2Profile.username}</div>
               <div className="match-score-value">{isUserChallenger ? match.challengerScore : match.challengedScore}</div>
             </div>
             <div className="match-score-separator">-</div>
             <div className="match-score-player">
-              <div className="match-score-name">{isUserChallenger ? player2Profile.name : player1Profile.name}</div>
+              <div className="match-score-name">{isUserChallenger ? player2Profile.username : player1Profile.username}</div>
               <div className="match-score-value">{isUserChallenger ? match.challengedScore : match.challengerScore}</div>
             </div>
           </div>
@@ -341,11 +349,11 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
               <div className="match-players-display">
                 <div className="match-player-info">
                   <div className="player-avatar">
-                    {player1Profile.name.charAt(0).toUpperCase()}
+                    {player1Profile.username.charAt(0).toUpperCase()}
                   </div>
                   <div className="match-player-details">
-                    <div className="match-player-name">{player1Profile.name}</div>
-                    <div className="match-player-rating">Rating: {player1Profile.rating}</div>
+                    <div className="match-player-name">{player1Profile.username}</div>
+                    <div className="match-player-rating">Rating: {player1Profile.elo_rating}</div>
                   </div>
                 </div>
                 
@@ -353,11 +361,11 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                 
                 <div className="match-player-info">
                   <div className="player-avatar">
-                    {player2Profile.name.charAt(0).toUpperCase()}
+                    {player2Profile.username.charAt(0).toUpperCase()}
                   </div>
                   <div className="match-player-details">
-                    <div className="match-player-name">{player2Profile.name}</div>
-                    <div className="match-player-rating">Rating: {player2Profile.rating}</div>
+                    <div className="match-player-name">{player2Profile.username}</div>
+                    <div className="match-player-rating">Rating: {player2Profile.elo_rating}</div>
                   </div>
                 </div>
               </div>

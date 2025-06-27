@@ -2,7 +2,7 @@
 // The VITE_API_BASE_URL from .env will be used for production builds.
 const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_BASE_URL || '');
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   error?: string
@@ -24,15 +24,33 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {},
+    options: {
+      method?: string;
+      headers?: Record<string, string> | Headers | [string, string][];
+      body?: string;
+    } = {},
     retries = this.retryCount
   ): Promise<ApiResponse<T>> {
     // The full URL is constructed by combining the base URL and the endpoint.
     const url = `${this.baseUrl}${endpoint}`;
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers
+    }
+
+    // Add custom headers if provided
+    if (options.headers) {
+      if (options.headers instanceof Headers) {
+        options.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+      } else if (Array.isArray(options.headers)) {
+        options.headers.forEach(([key, value]) => {
+          headers[key] = value;
+        });
+      } else {
+        Object.assign(headers, options.headers);
+      }
     }
 
     if (this.token) {
@@ -59,9 +77,11 @@ class ApiClient {
       }
 
       return data
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Network error'
+      
       // Retry on network errors
-      if (error.name === 'TypeError' && retries > 0) {
+      if (error instanceof TypeError && retries > 0) {
         console.warn(`Network error, retrying in ${this.retryDelay}ms...`);
         await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         return this.request(endpoint, options, retries - 1);
@@ -70,7 +90,7 @@ class ApiClient {
       console.error(`API request failed: ${endpoint}`, error)
       return {
         success: false,
-        error: error.message || 'Network error'
+        error: errorMessage
       }
     }
   }
@@ -157,7 +177,7 @@ class ApiClient {
   }
   
   // AI Umpire Insight operations
-  async getUmpireInsight(matchId: string, scoreSnapshot?: any) {
+  async getUmpireInsight(matchId: string, scoreSnapshot?: Record<string, unknown>) {
     const body = scoreSnapshot ? JSON.stringify({ scoreSnapshot }) : undefined;
     return this.request(`/matches/${matchId}/umpire-insight`, {
       method: 'POST',

@@ -2,6 +2,17 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { createClient } from '@supabase/supabase-js';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
+// Type definitions for Bedrock responses
+interface BedrockContentItem {
+  type: 'text';
+  text: string;
+}
+
+interface BedrockResponse {
+  content?: BedrockContentItem[];
+  completion?: string;
+}
+
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -222,7 +233,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const bedrockResponse = await bedrockClient.send(command);
     
     // Parse the response
-    const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
+    const responseBody: BedrockResponse = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
     console.log('Bedrock response:', JSON.stringify(responseBody, null, 2));
     
     let generatedStyleAnalysis = '';
@@ -231,8 +242,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (responseBody.content && Array.isArray(responseBody.content)) {
       // Claude 3 format
       generatedStyleAnalysis = responseBody.content
-        .filter((item: any) => item.type === 'text')
-        .map((item: any) => item.text)
+        .filter((item: BedrockContentItem) => item.type === 'text')
+        .map((item: BedrockContentItem) => item.text)
         .join('');
     } else if (responseBody.completion) {
       // Claude 2 format
@@ -267,15 +278,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         data: { playerStyleAnalysis: generatedStyleAnalysis }
       })
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return {
       statusCode: 500,
       headers: corsHeaders,
       body: JSON.stringify({ 
         success: false, 
         error: 'An unexpected error occurred',
-        details: error.message
+        details: errorMessage
       })
     };
   }

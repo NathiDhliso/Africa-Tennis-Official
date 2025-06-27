@@ -17,7 +17,6 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   onRegister, 
   onViewDetails 
 }) => {
-  const organizer = UserService.getPlayerById(tournament.organizerId);
   const participants = TournamentService.getTournamentParticipants(tournament.id);
   const isRegistered = TournamentService.isPlayerRegistered(tournament.id, currentUserId);
   const isOrganizer = tournament.organizerId === currentUserId;
@@ -29,11 +28,11 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   const getStatusColor = (status: Tournament['status']) => {
     switch (status) {
       case 'registration_open':
-        return 'var(--success-green)';
+        return 'var(--quantum-cyan)';
       case 'registration_closed':
         return 'var(--warning-orange)';
       case 'in_progress':
-        return 'var(--quantum-cyan)';
+        return 'var(--success-green)';
       case 'completed':
         return 'var(--text-muted)';
       default:
@@ -42,18 +41,15 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
   };
 
   const getStatusText = (status: Tournament['status']) => {
-    switch (status) {
-      case 'registration_open':
-        return 'Open';
-      case 'registration_closed':
-        return 'Closed';
-      case 'in_progress':
-        return 'Live';
-      case 'completed':
-        return 'Finished';
-      default:
-        return status;
-    }
+    return status.replace('_', ' ').toUpperCase();
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   return (
@@ -78,7 +74,7 @@ const TournamentCard: React.FC<TournamentCardProps> = ({
       <div className="tournament-card-info">
         <div className="tournament-card-info-item">
           <Calendar size={14} />
-          <span>{startDate.toLocaleDateString()}</span>
+          <span>{formatDate(tournament.startDate)}</span>
         </div>
         <div className="tournament-card-info-item">
           <MapPin size={14} />

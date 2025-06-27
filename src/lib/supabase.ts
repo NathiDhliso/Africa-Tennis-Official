@@ -33,23 +33,30 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 })
 
 // Helper function to handle Supabase errors consistently
-export const handleSupabaseError = (error: any): string => {
+export const handleSupabaseError = (error: unknown): string => {
   console.error('Supabase error:', error);
   
-  if (error?.code === 'PGRST116') {
-    return 'No data found';
-  }
+  // Type guard to check if error has expected properties
+  const isSupabaseError = (err: unknown): err is { code?: string; message?: string } => {
+    return typeof err === 'object' && err !== null;
+  };
   
-  if (error?.code === '23505') {
-    return 'This record already exists';
-  }
-  
-  if (error?.code === '23503') {
-    return 'Referenced record does not exist';
-  }
-  
-  if (error?.message) {
-    return error.message;
+  if (isSupabaseError(error)) {
+    if (error.code === 'PGRST116') {
+      return 'No data found';
+    }
+    
+    if (error.code === '23505') {
+      return 'This record already exists';
+    }
+    
+    if (error.code === '23503') {
+      return 'Referenced record does not exist';
+    }
+    
+    if (error.message) {
+      return error.message;
+    }
   }
   
   return 'An unexpected error occurred';

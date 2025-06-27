@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, MapPin, Trophy, Clock, Target } from 'lucide-react';
+import { Calendar, MapPin, Trophy, Target } from 'lucide-react';
 import { Match } from '../types';
 import MatchRequestActions from './matches/MatchRequestActions';
 
@@ -21,12 +21,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
   // Determine which player is the opponent based on the current user ID
   const isChallenger = match.challengerId === currentUserId;
   const opponentProfile = isChallenger ? match.player2 : match.player1;
-  const currentUserProfile = isChallenger ? match.player1 : match.player2;
   
   const matchDate = new Date(match.date);
   const isCompleted = match.status === 'completed';
   const isPending = match.status === 'pending';
-  const isConfirmed = match.status === 'confirmed';
   const isInProgress = match.status === 'in_progress';
   const isCancelled = match.status === 'cancelled' || match.status === 'declined';
   
@@ -62,7 +60,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       case 'cancelled':
         return 'Cancelled';
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
+        return String(status).charAt(0).toUpperCase() + String(status).slice(1);
     }
   };
 
@@ -76,7 +74,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
         const sets = match.score.sets || [];
         if (sets.length === 0) return 'No sets played';
         
-        return sets.map((set: any) => 
+        return sets.map((set: { player1_games: number; player2_games: number }) => 
           `${set.player1_games}-${set.player2_games}`
         ).join(', ');
       } catch (err) {
@@ -98,17 +96,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
     <div className="card" onClick={onViewDetails ? () => onViewDetails() : undefined} style={{ cursor: onViewDetails ? 'pointer' : 'default' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          {opponentProfile.profile_picture_url ? (
-            <img 
-              src={opponentProfile.profile_picture_url} 
-              alt={opponentProfile.username} 
-              className="player-avatar text-sm"
-            />
-          ) : (
-            <div className="player-avatar text-sm">
-              {opponentProfile.username.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <div className="player-avatar text-sm">
+            {opponentProfile.username.charAt(0).toUpperCase()}
+          </div>
           <div>
             <h3 className="font-semibold" style={{ color: 'var(--text-standard)' }}>
               vs {opponentProfile.username}
@@ -165,7 +155,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       {/* Show report score button for confirmed or in_progress matches */}
       {(match.status === 'in_progress' || match.status === 'confirmed' || isPastMatch) && (
         <button
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             onReportScore();
           }}
@@ -186,7 +176,7 @@ const MatchCard: React.FC<MatchCardProps> = ({
       
       {!isCompleted && !isPending && !isCancelled && onViewDetails && (
         <button
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             if (onViewDetails) onViewDetails();
           }}

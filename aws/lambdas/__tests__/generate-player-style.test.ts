@@ -1,6 +1,4 @@
 import { handler } from '../generate-player-style/index';
-import { createClient } from '@supabase/supabase-js';
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 
 // Mock the Supabase client

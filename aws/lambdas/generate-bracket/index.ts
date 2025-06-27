@@ -1,302 +1,303 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { createClient } from '@supabase/supabase-js';
 
-// CORS headers for all responses
-const corsHeaders = {
+interface Player {
+  user_id: string;
+  username: string;
+  elo_rating: number;
+  seed?: number;
+}
+
+interface BracketMatch {
+  id: string;
+  tournament_id: string;
+  round: number;
+  match_number: number;
+  player1_id?: string;
+  player2_id?: string;
+  winner_id?: string;
+  score?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  scheduled_date?: string;
+  location: string;
+}
+
+interface Tournament {
+  id: string;
+  name: string;
+  format: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
+  max_participants: number;
+  status: string;
+  location: string;
+}
+
+export const handler = async (event: {
+  pathParameters?: { tournamentId?: string };
+  queryStringParameters?: Record<string, string>;
+  httpMethod?: string;
+}): Promise<{
+  statusCode: number;
+  headers: Record<string, string>;
+  body: string;
+}> => {
+  const headers = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-  'Access-Control-Allow-Methods': 'OPTIONS,POST'
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Content-Type': 'application/json'
 };
 
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  // Handle preflight OPTIONS request
+  try {
+    // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: corsHeaders,
+        headers,
       body: ''
     };
   }
 
-  try {
-    // Get tournament ID from path parameters
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Extract tournament ID from path parameters
     const tournamentId = event.pathParameters?.tournamentId;
     
     if (!tournamentId) {
       return {
         statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: false, error: 'Tournament ID is required' })
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Tournament ID is required'
+        })
       };
     }
 
-    // Initialize Supabase client with service role key to bypass RLS
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: false, error: 'Server configuration error' })
-      };
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // 1. Fetch the tournament
+    // Fetch tournament details
     const { data: tournament, error: tournamentError } = await supabase
       .from('tournaments')
       .select('*')
       .eq('id', tournamentId)
       .single();
 
-    if (tournamentError) {
+    if (tournamentError || !tournament) {
       return {
         statusCode: 404,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: false, error: 'Tournament not found' })
-      };
-    }
-
-    // 2. Verify tournament status is registration_closed
-    if (tournament.status !== 'registration_closed') {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ 
-          success: false, 
-          error: `Tournament must be in 'registration_closed' status to generate brackets. Current status: ${tournament.status}` 
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Tournament not found'
         })
       };
     }
 
-    // 3. Fetch all registered players
+    // Check if tournament is in the right state to generate bracket
+    if (tournament.status !== 'registration_closed') {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          success: false, 
+          error: 'Tournament registration must be closed before generating bracket'
+        })
+      };
+    }
+
+    // Fetch tournament participants with their profiles
     const { data: participants, error: participantsError } = await supabase
       .from('tournament_participants')
       .select(`
         *,
-        player:profiles!tournament_participants_player_id_fkey(user_id, username, elo_rating)
+        profiles (
+          user_id,
+          username,
+          elo_rating
+        )
       `)
-      .eq('tournament_id', tournamentId);
+      .eq('tournament_id', tournamentId)
+      .order('seed', { ascending: true });
 
     if (participantsError) {
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: false, error: 'Failed to fetch tournament participants' })
-      };
+      throw new Error(`Failed to fetch participants: ${participantsError.message}`);
     }
 
     if (!participants || participants.length < 2) {
       return {
         statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: false, error: 'Tournament needs at least 2 participants' })
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'At least 2 participants required to generate bracket'
+        })
       };
     }
 
-    // 4. Seed players by ELO rating
-    const seededParticipants = [...participants].sort((a, b) => 
-      (b.player?.elo_rating || 0) - (a.player?.elo_rating || 0)
-    );
+    // Convert participants to players
+    const players: Player[] = participants.map((p: {
+      profiles: { user_id: string; username: string; elo_rating: number };
+      seed?: number;
+    }) => ({
+      user_id: p.profiles.user_id,
+      username: p.profiles.username,
+      elo_rating: p.profiles.elo_rating,
+      seed: p.seed || undefined
+    }));
 
-    // 5. Update seed numbers in tournament_participants table
-    for (let i = 0; i < seededParticipants.length; i++) {
-      const { error: updateError } = await supabase
-        .from('tournament_participants')
-        .update({ seed: i + 1 })
-        .eq('id', seededParticipants[i].id);
-      
-      if (updateError) {
-        console.error(`Failed to update seed for participant ${seededParticipants[i].id}:`, updateError);
-      }
-    }
-
-    // 6. Generate matches based on tournament format
-    const matches = [];
-    const now = new Date();
-    const tournamentStartDate = new Date(tournament.start_date);
+    // Generate bracket based on tournament format
+    let matches: BracketMatch[] = [];
     
     switch (tournament.format) {
       case 'single_elimination':
-        matches.push(...generateSingleEliminationMatches(
-          tournamentId,
-          seededParticipants,
-          tournamentStartDate
-        ));
+        matches = generateSingleEliminationBracket(players, tournament);
         break;
-      
-      case 'double_elimination':
-        matches.push(...generateDoubleEliminationMatches(
-          tournamentId,
-          seededParticipants,
-          tournamentStartDate
-        ));
-        break;
-      
       case 'round_robin':
-        matches.push(...generateRoundRobinMatches(
-          tournamentId,
-          seededParticipants,
-          tournamentStartDate
-        ));
+        matches = generateRoundRobinBracket(players, tournament);
         break;
-      
       default:
         return {
           statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ success: false, error: `Unsupported tournament format: ${tournament.format}` })
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: `Tournament format ${tournament.format} not yet supported`
+          })
         };
     }
 
-    // 7. Insert matches into the database
+    // Insert matches into database
     if (matches.length > 0) {
-      const { error: matchesError } = await supabase
+      const { error: matchInsertError } = await supabase
         .from('matches')
         .insert(matches);
 
-      if (matchesError) {
-        return {
-          statusCode: 500,
-          headers: corsHeaders,
-          body: JSON.stringify({ success: false, error: 'Failed to create tournament matches' })
-        };
+      if (matchInsertError) {
+        throw new Error(`Failed to create matches: ${matchInsertError.message}`);
       }
     }
 
-    // 8. Update tournament status to in_progress
+    // Update tournament status to in_progress
     const { error: updateError } = await supabase
       .from('tournaments')
-      .update({ status: 'in_progress' })
+      .update({ 
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      })
       .eq('id', tournamentId);
 
     if (updateError) {
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: false, error: 'Failed to update tournament status' })
-      };
+      throw new Error(`Failed to update tournament status: ${updateError.message}`);
     }
 
-    // Return success response with match count
     return {
       statusCode: 200,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({ 
         success: true, 
         data: { 
-          matchesCreated: matches.length,
-          tournamentStatus: 'in_progress'
+          tournamentId,
+          format: tournament.format,
+          participantCount: players.length,
+          matchCount: matches.length,
+          message: 'Tournament bracket generated successfully'
         }
       })
     };
-  } catch (error) {
-    console.error('Unexpected error:', error);
+
+  } catch (error: unknown) {
+    console.error('Error generating tournament bracket:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    
     return {
       statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ success: false, error: 'An unexpected error occurred' })
+      headers,
+      body: JSON.stringify({
+        success: false,
+        error: errorMessage
+      })
     };
   }
 };
 
-// Helper function to generate single elimination tournament matches
-function generateSingleEliminationMatches(
-  tournamentId: string,
-  participants: any[],
-  startDate: Date
-): any[] {
-  const matches = [];
-  const numParticipants = participants.length;
+function generateSingleEliminationBracket(players: Player[], tournament: Tournament): BracketMatch[] {
+  const matches: BracketMatch[] = [];
+  const matchDate = new Date();
+  matchDate.setDate(matchDate.getDate() + 1); // Schedule for tomorrow
   
-  // Calculate the number of rounds needed
-  const numRounds = Math.ceil(Math.log2(numParticipants));
+  // Calculate number of rounds needed
+  const numPlayers = players.length;
+  const nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(numPlayers)));
   
-  // Calculate the number of first-round matches
-  const numFirstRoundMatches = Math.pow(2, numRounds - 1);
+  // First round matches
+  const firstRoundMatches = Math.floor(nextPowerOfTwo / 2);
   
-  // Calculate the number of byes needed
-  const numByes = numFirstRoundMatches * 2 - numParticipants;
-  
-  // Create first round matches with seeded participants
-  let matchNumber = 1;
-  
-  // Seed the bracket using standard tournament seeding
-  const seededPositions = generateSeededPositions(numFirstRoundMatches * 2);
-  
-  for (let i = 0; i < numFirstRoundMatches; i++) {
-    const position1 = seededPositions[i * 2];
-    const position2 = seededPositions[i * 2 + 1];
-    
-    const player1 = position1 <= numParticipants ? participants[position1 - 1] : null;
-    const player2 = position2 <= numParticipants ? participants[position2 - 1] : null;
-    
-    // If both players are null (shouldn't happen in proper seeding), skip this match
-    if (!player1 && !player2) continue;
-    
-    // If one player is null, the other gets a bye (handled in later rounds)
-    if (!player1 || !player2) continue;
-    
-    // Calculate match date (staggered throughout the tournament)
-    const matchDate = new Date(startDate);
-    matchDate.setHours(startDate.getHours() + (i % 4) * 2); // Stagger matches by 2 hours
-    
-    matches.push({
-      tournament_id: tournamentId,
-      player1_id: player1.player.user_id,
-      player2_id: player2.player.user_id,
-      status: 'pending',
-      date: matchDate.toISOString(),
-      location: 'Main Court', // This could be more sophisticated
-      round: 1,
-      match_number: matchNumber++
-    });
-  }
-  
-  return matches;
-}
-
-// Helper function to generate double elimination tournament matches
-function generateDoubleEliminationMatches(
-  tournamentId: string,
-  participants: any[],
-  startDate: Date
-): any[] {
-  // For now, we'll just create the winners bracket like single elimination
-  // In a real implementation, you'd also set up the losers bracket structure
-  return generateSingleEliminationMatches(tournamentId, participants, startDate);
-}
-
-// Helper function to generate round robin tournament matches
-function generateRoundRobinMatches(
-  tournamentId: string,
-  participants: any[],
-  startDate: Date
-): any[] {
-  const matches = [];
-  const numParticipants = participants.length;
-  let matchNumber = 1;
-  
-  // Generate a match for each pair of participants
-  for (let i = 0; i < numParticipants; i++) {
-    for (let j = i + 1; j < numParticipants; j++) {
-      // Calculate match date (staggered throughout the tournament)
-      const matchDate = new Date(startDate);
-      const matchIndex = matchNumber - 1;
-      matchDate.setHours(startDate.getHours() + Math.floor(matchIndex / 4) * 2); // 4 matches per time slot
-      matchDate.setDate(startDate.getDate() + Math.floor(matchIndex / 8)); // 8 matches per day
+  // If we have exactly a power of 2 players, create all first round matches
+  // Otherwise, some players get byes to the second round
+  if (numPlayers === nextPowerOfTwo) {
+    // Perfect bracket - all players play in first round
+    for (let i = 0; i < firstRoundMatches; i++) {
+      const player1 = players[i * 2];
+      const player2 = players[i * 2 + 1];
       
       matches.push({
-        tournament_id: tournamentId,
-        player1_id: participants[i].player.user_id,
-        player2_id: participants[j].player.user_id,
+        id: `${tournament.id}-r1-m${i + 1}`,
+        tournament_id: tournament.id,
+        round: 1,
+        match_number: i + 1,
+        player1_id: player1.user_id,
+        player2_id: player2.user_id,
         status: 'pending',
-        date: matchDate.toISOString(),
-        location: 'Court ' + ((matchNumber % 3) + 1), // Distribute across courts
-        round: 1, // All matches are considered round 1 in round robin
-        match_number: matchNumber++
+        scheduled_date: matchDate.toISOString(),
+        location: tournament.location
+      });
+    }
+  } else {
+    // Some players get byes - top seeded players should get byes
+    const playersWithByes = nextPowerOfTwo - numPlayers;
+    const playersInFirstRound = numPlayers - playersWithByes;
+    
+    // Create first round matches for players without byes
+    for (let i = 0; i < Math.floor(playersInFirstRound / 2); i++) {
+      const player1 = players[playersWithByes + i * 2];
+      const player2 = players[playersWithByes + i * 2 + 1];
+    
+    matches.push({
+        id: `${tournament.id}-r1-m${i + 1}`,
+        tournament_id: tournament.id,
+        round: 1,
+        match_number: i + 1,
+        player1_id: player1.user_id,
+        player2_id: player2.user_id,
+      status: 'pending',
+        scheduled_date: matchDate.toISOString(),
+        location: tournament.location
+    });
+  }
+}
+
+  // Generate subsequent rounds (placeholders for winners)
+  const totalRounds = Math.ceil(Math.log2(nextPowerOfTwo));
+  
+  for (let round = 2; round <= totalRounds; round++) {
+    const matchesInRound = Math.pow(2, totalRounds - round);
+    const roundDate = new Date(matchDate);
+    roundDate.setDate(roundDate.getDate() + round - 1);
+    
+    for (let i = 0; i < matchesInRound; i++) {
+      matches.push({
+        id: `${tournament.id}-r${round}-m${i + 1}`,
+        tournament_id: tournament.id,
+        round,
+        match_number: i + 1,
+        status: 'pending',
+        scheduled_date: roundDate.toISOString(),
+        location: tournament.location
       });
     }
   }
@@ -304,30 +305,34 @@ function generateRoundRobinMatches(
   return matches;
 }
 
-// Helper function to generate seeded positions for a bracket
-function generateSeededPositions(numPositions: number): number[] {
-  if (numPositions <= 1) return [1];
+function generateRoundRobinBracket(players: Player[], tournament: Tournament): BracketMatch[] {
+  const matches: BracketMatch[] = [];
+  const matchDate = new Date();
+  matchDate.setDate(matchDate.getDate() + 1);
   
-  const positions = Array(numPositions).fill(0);
-  positions[0] = 1; // Top seed
-  positions[numPositions - 1] = 2; // Second seed
+  let matchNumber = 1;
   
-  if (numPositions <= 2) return positions;
-  
-  // Place 3rd and 4th seeds
-  positions[numPositions / 2] = 3;
-  positions[numPositions / 2 - 1] = 4;
-  
-  // For larger tournaments, we would continue with more sophisticated seeding
-  // but this is sufficient for basic implementation
-  
-  // Fill remaining positions
-  let currentSeed = 5;
-  for (let i = 0; i < numPositions; i++) {
-    if (positions[i] === 0) {
-      positions[i] = currentSeed++;
+  // Generate all possible pairings
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      const roundDate = new Date(matchDate);
+      roundDate.setDate(roundDate.getDate() + Math.floor((matchNumber - 1) / 3)); // Spread matches over multiple days
+      
+      matches.push({
+        id: `${tournament.id}-rr-m${matchNumber}`,
+        tournament_id: tournament.id,
+        round: 1, // All matches are in "round 1" for round robin
+        match_number: matchNumber,
+        player1_id: players[i].user_id,
+        player2_id: players[j].user_id,
+        status: 'pending',
+        scheduled_date: roundDate.toISOString(),
+        location: tournament.location
+      });
+      
+      matchNumber++;
     }
   }
   
-  return positions;
+  return matches;
 }

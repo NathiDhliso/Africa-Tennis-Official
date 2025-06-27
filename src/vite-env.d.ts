@@ -1,7 +1,8 @@
+/// <reference types="vite/client" />
 
 const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_BASE_URL || '');
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   error?: string
@@ -60,11 +61,12 @@ class ApiClient {
       }
 
       return data
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown network error occurred'
       console.error(`API request failed: ${endpoint}`, error)
       return {
         success: false,
-        error: error.message || 'An unknown network error occurred'
+        error: errorMessage
       }
     }
   }

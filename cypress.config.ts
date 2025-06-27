@@ -3,13 +3,13 @@ import { defineConfig } from 'cypress'
 export default defineConfig({
   e2e: {
     baseUrl: 'http://localhost:5173',
-    setupNodeEvents(on, config) {
+    setupNodeEvents() {
       // implement node event listeners here
     },
     env: {
       // Use environment variables for Supabase credentials
-      SUPABASE_URL: Cypress.env('SUPABASE_URL') || 'your_supabase_url',
-      SUPABASE_ANON_KEY: Cypress.env('SUPABASE_ANON_KEY') || 'your_supabase_anon_key'
+      SUPABASE_URL: process.env.SUPABASE_URL || 'https://ppuqbimzeplznqdchvve.supabase.co',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwdXFiaW16ZXBsem5xZGNodnZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2MzcyNjEsImV4cCI6MjA2NTIxMzI2MX0.Yd_QJtBnUYz8GJZHLHYnHDXVzU-ScLKutJhXWRr_qiQ'
     }
   },
   component: {
