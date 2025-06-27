@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to your AWS API Gateway endpoint
       '/api': {
-        target: 'https://l11z5uyxih.execute-api.us-east-1.amazonaws.com/prod',
+        target: 'https://dd7v2jtghk.execute-api.us-west-2.amazonaws.com/prod',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
