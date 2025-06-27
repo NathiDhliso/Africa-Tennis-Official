@@ -113,40 +113,14 @@ const AICoachPage: React.FC = () => {
     } catch (err) {
       console.error('Error generating player style analysis:', err);
       
-      // Check if it's a 403 error (API not deployed) and provide helpful message
+      // Provide clear error messages for different scenarios
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
-        // Provide demo analysis when API is not available
-        const demoAnalysis = `**Demo Analysis for ${selectedPlayer.username}**
-
-Based on the available match data and performance metrics, here's a comprehensive playing style analysis:
-
-**Playing Style:** ${selectedPlayer.skill_level === 'expert' ? 'Aggressive Baseline Power' : selectedPlayer.skill_level === 'advanced' ? 'All-Court Versatile' : 'Consistent Defensive'}
-
-**Key Strengths:**
-• ${selectedPlayer.matches_won > selectedPlayer.matches_played * 0.6 ? 'Excellent match-closing ability' : 'Strong baseline consistency'}
-• ${selectedPlayer.elo_rating > 1400 ? 'High-level tactical awareness' : 'Solid fundamental technique'}
-• ${selectedPlayer.skill_level === 'expert' ? 'Powerful serve and aggressive net play' : 'Reliable groundstrokes and court positioning'}
-
-**Areas for Improvement:**
-• ${selectedPlayer.matches_won < selectedPlayer.matches_played * 0.4 ? 'Focus on mental toughness in pressure situations' : 'Develop more variety in shot selection'}
-• ${selectedPlayer.skill_level === 'beginner' ? 'Work on serve consistency and placement' : 'Improve transition game and net skills'}
-• Enhance fitness level for longer matches
-
-**Tactical Recommendations:**
-• ${selectedPlayer.elo_rating > 1500 ? 'Develop signature shots to create more winners' : 'Focus on reducing unforced errors'}
-• Practice situational play and match scenarios
-• Work with a coach on specific technical refinements
-
-*Note: This is a demo analysis. Deploy AWS Lambda functions for full AI-powered insights.*`;
-
-        setSelectedPlayer({
-          ...selectedPlayer,
-          player_style_analysis: demoAnalysis
-        });
-        setSuccess('Demo analysis generated! Deploy AWS services for full AI capabilities.');
+        setError('AI Coach service is currently unavailable. Please ensure AWS Lambda functions are deployed and properly configured.');
       } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
         setError('AI Coach service is experiencing technical difficulties. Please try again later.');
+      } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+        setError('AI Coach endpoint not found. Please verify the API configuration and deployment.');
       } else {
         setError(`Failed to generate analysis: ${errorMessage}`);
       }
@@ -154,8 +128,6 @@ Based on the available match data and performance metrics, here's a comprehensiv
       setIsGeneratingAnalysis(false);
     }
   };
-
-
 
   const calculateWinRate = (matchesPlayed: number, matchesWon: number) => {
     if (matchesPlayed === 0) return '0.0';
@@ -200,7 +172,7 @@ Based on the available match data and performance metrics, here's a comprehensiv
                 <h2 className="ai-coach-card-title">
                   <User size={20} />
                   Player Selection
-                </h2>
+              </h2>
                 <p className="ai-coach-card-subtitle">
                   Search for any player or analyze your own performance
                 </p>
@@ -334,7 +306,7 @@ Based on the available match data and performance metrics, here's a comprehensiv
                   <h3 className="ai-coach-card-title">
                     <Trophy size={18} />
                     Recent Performance
-                  </h3>
+                </h3>
                 </div>
                 <div className="ai-coach-matches-list">
                   {playerMatches.map((match) => {
@@ -370,7 +342,7 @@ Based on the available match data and performance metrics, here's a comprehensiv
                 <h2 className="ai-coach-card-title">
                   <BarChart3 size={20} />
                   Player Style Analysis
-                </h2>
+              </h2>
                 <p className="ai-coach-card-subtitle">
                   AI-powered insights into playing style, strengths, and improvement areas
                 </p>
@@ -399,7 +371,7 @@ Based on the available match data and performance metrics, here's a comprehensiv
 
               {/* Analysis Content */}
               <div className="ai-coach-analysis-section">
-                {isGeneratingAnalysis ? (
+              {isGeneratingAnalysis ? (
                   <div className="ai-coach-loading-state">
                     <div className="ai-coach-loading-animation">
                       <Brain size={48} className="ai-coach-loading-icon" />
@@ -421,8 +393,8 @@ Based on the available match data and performance metrics, here's a comprehensiv
                         <span>Generating insights</span>
                       </div>
                     </div>
-                  </div>
-                ) : selectedPlayer?.player_style_analysis ? (
+                </div>
+              ) : selectedPlayer?.player_style_analysis ? (
                   <div className="ai-coach-analysis-content">
                     <div className="ai-coach-analysis-header">
                       <div className="ai-coach-analysis-badge">
@@ -444,21 +416,21 @@ Based on the available match data and performance metrics, here's a comprehensiv
                   <div className="ai-coach-empty-state">
                     <div className="ai-coach-empty-icon">
                       <Sparkles size={64} />
-                    </div>
+                </div>
                     <h3>Ready to Analyze</h3>
                     <p>
                       Generate an AI-powered analysis of {selectedPlayer.username}'s playing style, 
                       strengths, and areas for improvement based on match history and performance data.
-                    </p>
-                    <button
-                      onClick={handleGenerateAnalysis}
+                  </p>
+                  <button
+                    onClick={handleGenerateAnalysis}
                       className="ai-coach-cta-btn"
-                    >
+                  >
                       <Brain size={18} />
                       Start AI Analysis
-                    </button>
-                  </div>
-                ) : (
+                  </button>
+                </div>
+              ) : (
                   <div className="ai-coach-empty-state">
                     <div className="ai-coach-empty-icon">
                       <User size={64} />
@@ -467,9 +439,9 @@ Based on the available match data and performance metrics, here's a comprehensiv
                     <p>
                       Choose a player from the search results or use your own profile to begin 
                       generating professional AI-powered tennis insights.
-                    </p>
-                  </div>
-                )}
+                  </p>
+                </div>
+              )}
               </div>
 
               {/* AI Coach Information */}
