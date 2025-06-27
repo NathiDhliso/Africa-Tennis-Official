@@ -106,8 +106,14 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Opponent validation
     if (!selectedPlayer) {
-      newErrors.player = 'Please select an opponent';
+      if (formData.matchType === 'doubles') {
+        newErrors.player =
+          'For doubles you need to add another opponent team member. Please select at least one opponent to proceed.';
+      } else {
+        newErrors.player = 'Please select an opponent';
+      }
     }
 
     if (!formData.date) {
