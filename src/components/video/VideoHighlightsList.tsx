@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Trash, Download, Info, X } from 'lucide-react';
+import { Play, Trash, Download, Info, X, Video, Activity, Star, TrendingUp, Zap, Target, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface VideoHighlight {
@@ -80,12 +80,15 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
 
   const handleDownloadHighlight = async (highlight: VideoHighlight) => {
     try {
-      // Get the video URL
+      // Get the video URL using the stored file path
       const { data, error } = await supabase.storage
         .from('match-highlights')
         .createSignedUrl(highlight.video_url, 60); // 60 seconds expiry
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        throw error;
+      }
       
       if (data?.signedUrl) {
         // Create a temporary anchor element to trigger download
@@ -111,12 +114,15 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
     if (!selectedHighlight) return;
     
     try {
-      // Delete the video file from storage
+      // Delete the video file from storage using the stored file path
       const { error: storageError } = await supabase.storage
         .from('match-highlights')
         .remove([selectedHighlight.video_url]);
         
-      if (storageError) throw storageError;
+      if (storageError) {
+        console.error('Error deleting from storage:', storageError);
+        // Don't throw here as the file might not exist
+      }
       
       // Delete the highlight record from the database
       const { error: dbError } = await supabase

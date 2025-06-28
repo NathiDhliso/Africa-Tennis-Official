@@ -197,15 +197,27 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
         type: 'video/webm'
       });
       
-      // Upload to Supabase Storage
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Upload to Supabase Storage with user-specific path
       const fileName = `${Date.now()}.webm`;
-      const filePath = `highlights/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('match-highlights')
-        .upload(filePath, blob);
+        .upload(filePath, blob, {
+          contentType: 'video/webm',
+          upsert: false
+        });
         
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
       
       // Get public URL
       const { data: urlData } = supabase.storage
@@ -214,14 +226,30 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
         
       const videoUrl = urlData.publicUrl;
       
-      // Save highlight metadata to database
+      // Save highlight to match_highlights table
+      const { error: highlightError } = await supabase
+        .from('match_highlights')
+        .insert({
+          match_id: matchId || null,
+          type: highlightType,
+          description: highlightDescription || `${highlightType} highlight`,
+          video_url: filePath, // Store the file path, not the full URL
+          created_by: user.id
+        });
+        
+      if (highlightError) {
+        console.error('Highlight save error:', highlightError);
+        throw highlightError;
+      }
+      
+      // Save match event if matchId is provided
       if (matchId) {
         const { error: eventError } = await supabase
           .from('match_events')
           .insert({
             match_id: matchId,
             event_type: 'video_recorded',
-            player_id: (await supabase.auth.getUser()).data.user?.id || '',
+            player_id: user.id,
             description: highlightDescription || `${highlightType} highlight`,
             metadata: {
               video_url: videoUrl,
@@ -229,7 +257,10 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
             }
           });
           
-        if (eventError) throw eventError;
+        if (eventError) {
+          console.error('Event save error:', eventError);
+          // Don't throw here as the highlight was saved successfully
+        }
       }
       
       // Call the onVideoSaved callback
@@ -241,9 +272,12 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
       setRecordedChunks([]);
       setHighlightDescription('');
       setIsProcessingVideo(false);
+      
+      // Show success message
+      setError(null);
     } catch (err) {
       console.error('Error saving video:', err);
-      setError('Failed to save video. Please try again.');
+      setError(`Failed to save video: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setIsProcessingVideo(false);
     }
   }, [recordedChunks, highlightType, highlightDescription, matchId, onVideoSaved]);
