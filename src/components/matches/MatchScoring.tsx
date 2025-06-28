@@ -244,7 +244,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   }, [score]);
 
   const handleAwardPoint = async (playerId: string) => {
-    if (isSubmitting || !match.id) return;
+    if (isSubmitting || !match.id || !score) return;
 
     setIsSubmitting(true);
     setError({...error, visible: false});
