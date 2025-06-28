@@ -40,15 +40,15 @@ export const LoginForm: React.FC = () => {
     const newErrors: {email?: string; password?: string} = {};
     
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = 'Email address required for system access';
     } else if (!validateEmail(email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Invalid email format detected';
     }
     
     if (!password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'Password required for authentication';
     } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'Password must contain at least 6 characters';
     }
     
     setErrors(newErrors);
@@ -74,15 +74,14 @@ export const LoginForm: React.FC = () => {
         // Provide a friendlier message when the credentials don't match
         if (authError.message.toLowerCase().includes('invalid login credentials')) {
           throw new Error(
-            "Hmm… that email / password combination didn't match our records. " +
-            'Please double-check and try again, or use "Forgot Password?" if you need a reset.'
+            "Authentication failed: Invalid credentials detected. Please verify your login information and try again."
           );
         }
         throw authError;
       }
       
       if (!authData.user) {
-        throw new Error('Unable to sign in. Please try again later.');
+        throw new Error('System error: Authentication process failed. Please try again later.');
       }
       
       // Check if the user has a profile
@@ -95,18 +94,18 @@ export const LoginForm: React.FC = () => {
       if (profileError) {
         if (profileError.code === 'PGRST116') {
           // No profile found for this user
-          throw new Error('Your account exists but profile data is missing. Please contact support.');
+          throw new Error('Profile data not found. Please contact system administration for assistance.');
         }
         throw profileError;
       }
       
       // If we get here, both auth and profile exist
       await signIn(email, password);
-      setMessage('Login successful! Redirecting...');
+      setMessage('Authentication successful! Initializing your tennis dashboard...');
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
-      setMessage(error.message || 'An error occurred during sign in. Please try again.');
+      setMessage(error.message || 'Authentication error: Unable to establish secure connection. Please try again.');
       setIsLoading(false);
     }
   };
@@ -219,7 +218,7 @@ export const LoginForm: React.FC = () => {
               {isLoading ? (
                 <>
                   <Loader2 size={20} className="loading-icon" />
-                  <span>Signing In...</span>
+                  <span>Authenticating...</span>
                 </>
               ) : (
                 <>

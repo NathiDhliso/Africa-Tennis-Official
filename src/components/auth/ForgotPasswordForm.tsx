@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { Mail, Loader2, CheckCircle } from 'lucide-react';
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email('Invalid email address')
+  email: z.string().email('Invalid email format detected')
 });
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
@@ -38,7 +38,7 @@ export const ForgotPasswordForm: React.FC = () => {
       
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Password reset request failed. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -51,12 +51,12 @@ export const ForgotPasswordForm: React.FC = () => {
           <div className="text-green-600 mb-4">
             <CheckCircle className="w-16 h-16 mx-auto" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Link Sent</h2>
           <p className="text-gray-600 mb-6">
-            We've sent you a password reset link. Please check your email and follow the instructions to reset your password.
+            We've dispatched a secure password reset link to your email. Please check your inbox and follow the instructions to reset your password.
           </p>
           <Link to="/login" className="btn btn-primary">
-            Back to Login
+            Return to Login
           </Link>
         </div>
       </div>
@@ -68,10 +68,10 @@ export const ForgotPasswordForm: React.FC = () => {
       <div className="bg-white shadow-lg rounded-lg p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Forgot Password
+            Password Recovery
           </h1>
           <p className="text-gray-600">
-            Enter your email and we'll send you a reset link
+            Enter your registered email to receive a secure reset link
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export const ForgotPasswordForm: React.FC = () => {
                 type="email"
                 id="email"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your email"
+                placeholder="Enter your registered email"
               />
             </div>
             {errors.email && (
@@ -109,7 +109,7 @@ export const ForgotPasswordForm: React.FC = () => {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Sending Reset Link...
+                Processing Request...
               </>
             ) : (
               'Send Reset Link'

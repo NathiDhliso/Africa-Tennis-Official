@@ -51,27 +51,27 @@ export const SignUpForm: React.FC = () => {
     } = {};
     
     if (!username.trim()) {
-      newErrors.username = 'Username is required';
+      newErrors.username = 'Username required for player identification';
     } else if (username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
+      newErrors.username = 'Username must contain at least 3 characters';
     }
     
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = 'Email address required for account creation';
     } else if (!validateEmail(email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Invalid email format detected';
     }
     
     if (!password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = 'Password required for account security';
     } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'Password must contain at least 6 characters';
     }
     
     if (!confirmPassword.trim()) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = 'Password confirmation does not match';
     }
     
     setErrors(newErrors);
@@ -88,14 +88,14 @@ export const SignUpForm: React.FC = () => {
 
     try {
       await signUp(email, password, username);
-      setMessage('Account created successfully! Redirecting to login...');
+      setMessage('Account created successfully! Initializing your tennis profile...');
       
       // Redirect to login after a short delay
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (error: any) {
-      setMessage(error.message || 'Failed to create account. Please try again.');
+      setMessage(error.message || 'Account creation failed. Please verify your information and try again.');
       setIsLoading(false);
     }
   };

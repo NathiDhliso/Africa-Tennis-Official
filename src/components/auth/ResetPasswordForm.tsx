@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { Eye, EyeOff, Lock, Loader2, CheckCircle } from 'lucide-react';
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(6, 'Password must contain at least 6 characters'),
   confirmPassword: z.string()
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -52,7 +52,7 @@ export const ResetPasswordForm: React.FC = () => {
         navigate('/login');
       }, 3000);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Password reset failed. Please try again or contact support.');
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +67,7 @@ export const ResetPasswordForm: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Successful</h2>
           <p className="text-gray-600 mb-6">
-            Your password has been successfully reset. You will be redirected to the login page shortly.
+            Your password has been securely updated. You will be redirected to the login page shortly.
           </p>
           <Link to="/login" className="btn btn-primary">
             Go to Login
@@ -85,7 +85,7 @@ export const ResetPasswordForm: React.FC = () => {
             Reset Your Password
           </h1>
           <p className="text-gray-600">
-            Please enter your new password below
+            Create a new secure password for your account
           </p>
         </div>
 
@@ -156,7 +156,7 @@ export const ResetPasswordForm: React.FC = () => {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Resetting Password...
+                Updating Security Protocol...
               </>
             ) : (
               'Reset Password'

@@ -11,7 +11,7 @@ import type { Database } from '../../types/database'
 type Profile = Database['public']['Tables']['profiles']['Row']
 
 const profileSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
+  username: z.string().min(3, 'Username must contain at least 3 characters'),
   bio: z.string().max(200, 'Bio must be less than 200 characters').optional().nullable(),
   skill_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
 })
@@ -62,7 +62,7 @@ export const ProfileForm: React.FC = () => {
       setSuccessMessage('Profile updated successfully')
       reset(data) // Reset form with new values
     } catch (err: any) {
-      setErrorMessage(err.message)
+      setErrorMessage(err.message || 'Profile update failed. Please try again later.')
     } finally {
       setIsSubmitting(false)
     }
@@ -75,13 +75,13 @@ export const ProfileForm: React.FC = () => {
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      setErrorMessage('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.');
+      setErrorMessage('Invalid file format. Please upload a JPEG, PNG, GIF, or WebP image.');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('File too large. Maximum size is 5MB.');
+      setErrorMessage('File size exceeds the 5MB limit. Please upload a smaller image.');
       return;
     }
 
@@ -224,7 +224,7 @@ export const ProfileForm: React.FC = () => {
               {isUploading && (
                 <div className="mt-2 text-sm text-gray-600 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                  Uploading...
+                  Uploading image...
                 </div>
               )}
               {previewUrl && (

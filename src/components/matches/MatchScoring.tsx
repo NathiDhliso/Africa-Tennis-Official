@@ -119,8 +119,8 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
           console.error('Error parsing score:', err);
           setError({
             visible: true,
-            title: 'Error Loading Score',
-            message: 'There was a problem loading the match score.',
+            title: 'Score Data Error',
+            message: 'Unable to process match score data. The system encountered an unexpected format.',
             type: 'error'
           });
         }
@@ -171,7 +171,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
             }]);
 
             if (payload.new.status === 'completed') {
-              setSuccessMessage('Match completed!');
+              setSuccessMessage('Match completed successfully!');
               setTimeout(() => onBack(), 3000);
             }
           }
@@ -204,7 +204,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       });
       
       if (!response.success) {
-        throw new Error(response.error || 'Failed to update score');
+        throw new Error(response.error || 'Score update failed. Please try again.');
       }
       
       // Set the updated score
@@ -226,8 +226,8 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       console.error('Error awarding point:', err);
       setError({
         visible: true,
-        title: 'Error Updating Score',
-        message: err.message || 'Failed to award point',
+        title: 'Scoring System Error',
+        message: err.message || 'Unable to record point. The scoring system encountered an issue.',
         type: 'error'
       });
     } finally {
@@ -262,8 +262,9 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
           .catch((err) => {
             setError({
               visible: true,
-              title: 'Undo Failed',
-              message: err.message || 'Failed to undo last point',
+              title: 'Undo Operation Failed',
+              message: 'The system could not revert to the previous score state. Please try again.',
+              details: err.message,
               type: 'error'
             });
           })
@@ -274,8 +275,9 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         console.error('Error undoing point:', err);
         setError({
           visible: true,
-          title: 'Undo Failed',
-          message: err.message || 'Failed to undo last point',
+          title: 'Undo Operation Failed',
+          message: 'The system could not revert to the previous score state. Please try again.',
+          details: err.message,
           type: 'error'
         });
         setIsSubmitting(false);
@@ -294,7 +296,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       const winnerId = getMatchWinner();
       
       if (!winnerId) {
-        throw new Error('Cannot determine match winner');
+        throw new Error('Match winner could not be determined. Please ensure the match has a clear result.');
       }
       
       const { error } = await supabase
@@ -307,7 +309,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         
       if (error) throw error;
 
-      setSuccessMessage('Match completed successfully!');
+      setSuccessMessage('Match completed successfully! Updating player statistics...');
       setTimeout(() => {
         onBack();
       }, 3000);
@@ -315,8 +317,8 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       console.error('Error ending match:', err);
       setError({
         visible: true,
-        title: 'Error Ending Match',
-        message: err.message || 'Failed to end match',
+        title: 'Match Completion Error',
+        message: err.message || 'Unable to complete the match. Please try again or contact support.',
         type: 'error'
       });
     } finally {
@@ -380,7 +382,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       const response = await apiClient.getUmpireInsight(match.id, score);
       
       if (!response.success) {
-        throw new Error(response.error || 'Failed to get umpire insight');
+        throw new Error(response.error || 'AI insight generation failed. Please try again later.');
       }
       
       setUmpireInsight(response.data as UmpireInsight);
@@ -394,8 +396,8 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       console.error('Error getting umpire insight:', err);
       setError({
         visible: true,
-        title: 'AI Insight Failed',
-        message: 'Oops! We couldn\'t fetch the AI umpire insight right now. This may be due to a temporary server issue or network problem. Please try again shortly. If this keeps happening, let us know through support.',
+        title: 'AI Analysis Unavailable',
+        message: 'The AI umpire insight system is temporarily unavailable. This may be due to high demand or a network issue. Please try again shortly.',
         type: 'error'
       });
     } finally {
@@ -410,7 +412,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   if (!score) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="large" text="Loading match data..." />
+        <LoadingSpinner size="large" text="Initializing match data..." />
       </div>
     );
   }
@@ -457,7 +459,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
                 <p className="text-text-standard mb-2">{error.message}</p>
                 {error.details && (
                   <details className="mt-2">
-                    <summary className="text-sm text-text-subtle cursor-pointer">Technical details</summary>
+                    <summary className="text-sm text-text-subtle cursor-pointer">System diagnostic information</summary>
                     <p className="mt-1 text-sm text-text-subtle bg-bg-elevated p-2 rounded">{error.details}</p>
                   </details>
                 )}
@@ -496,7 +498,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
               <Sparkles className="h-5 w-5 text-quantum-cyan flex-shrink-0 mt-0.5" />
               <div>
                 <div className="flex items-center">
-                  <h3 className="text-sm font-medium text-quantum-cyan">AI Umpire Insight</h3>
+                  <h3 className="text-sm font-medium text-quantum-cyan">AI Umpire Analysis</h3>
                   <span className="ml-2 text-xs px-1.5 py-0.5 bg-warning-orange bg-opacity-20 text-warning-orange rounded-full">BETA</span>
                 </div>
                 <p className="text-text-standard mt-1">{umpireInsight.insight}</p>
@@ -702,11 +704,11 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
             <div className="bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-6 max-w-md w-full">
               <h3 className="text-xl font-bold mb-4 flex items-center">
                 <AlertTriangle className="h-6 w-6 text-warning-orange mr-2" />
-                End Match Confirmation
+                Confirm Match Completion
               </h3>
               
               <p className="mb-6">
-                Are you sure you want to end this match? This will mark the match as completed and calculate the final result.
+                Are you sure you want to end this match? This will finalize the score, calculate player ratings, and update tournament standings if applicable.
               </p>
               
               <div className="flex gap-4">
