@@ -149,18 +149,23 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       const matchDateTime = new Date(`${formData.date}T${formData.time}`);
       const locationWithDetails = `${formData.location}${formData.courtType !== 'hard' ? ` (${formData.courtType} court)` : ''}`;
       
-      // Use user.id (which corresponds to auth.uid()) to satisfy RLS policy
+      // Create the match in Supabase
       const { data, error } = await supabase
         .from('matches')
         .insert({
-          player1_id: user.id, // Use user.id instead of profile.user_id
+          player1_id: user.id,
           player2_id: selectedPlayer.user_id,
           date: matchDateTime.toISOString(),
           location: locationWithDetails,
-          status: 'pending'
+          status: 'pending',
+          score: {
+            sets: [],
+            current_game: { player1: '0', player2: '0' },
+            server_id: user.id,
+            is_tiebreak: false
+          }
         })
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Supabase error details:', error);
