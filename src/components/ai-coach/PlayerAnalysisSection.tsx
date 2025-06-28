@@ -20,11 +20,11 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
 
   const handleGenerateAnalysis = async () => {
     if (!selectedPlayer) return;
-    
+
     setIsGeneratingAnalysis(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
       console.log(`Generating player style analysis for ${selectedPlayer.username} (${selectedPlayer.user_id})`);
       const response = await apiClient.generatePlayerStyle(selectedPlayer.user_id);

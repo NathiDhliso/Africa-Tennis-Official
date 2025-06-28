@@ -250,79 +250,114 @@ const MatchScoring: React.FC<{
     try {
       console.log(`Awarding point to player ${playerId} with point type ${pointType}`);
       
-      // First try the API Gateway endpoint
-      const response = await apiClient.updateMatchScore(match.id, {
-        winningPlayerId: playerId,
-        pointType: pointType,
-      });
+      // Update the score directly in the UI for immediate feedback
+      const updatedScore = { ...score };
       
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to update score');
+      // Determine which player won the point
+      const isPlayer1 = playerId === match.player1_id;
+      
+      // Update the current game score based on tennis scoring rules
+      if (updatedScore.is_tiebreak) {
+        // Tiebreak scoring (1, 2, 3, etc.)
+        if (isPlayer1) {
+          updatedScore.current_game.player1 = (parseInt(updatedScore.current_game.player1) + 1).toString();
+        } else {
+          updatedScore.current_game.player2 = (parseInt(updatedScore.current_game.player2) + 1).toString();
+        }
+      } else {
+        // Regular game scoring (0, 15, 30, 40, AD)
+        if (isPlayer1) {
+          switch (updatedScore.current_game.player1) {
+            case '0': updatedScore.current_game.player1 = '15'; break;
+            case '15': updatedScore.current_game.player1 = '30'; break;
+            case '30': updatedScore.current_game.player1 = '40'; break;
+            case '40':
+              if (updatedScore.current_game.player2 === '40') {
+                updatedScore.current_game.player1 = 'AD';
+              } else if (updatedScore.current_game.player2 === 'AD') {
+                updatedScore.current_game.player1 = '40';
+                updatedScore.current_game.player2 = '40';
+              } else {
+                // Player 1 wins the game
+                if (updatedScore.sets[0]) {
+                  updatedScore.sets[0].player1_games += 1;
+                }
+                updatedScore.current_game.player1 = '0';
+                updatedScore.current_game.player2 = '0';
+              }
+              break;
+            case 'AD':
+              // Player 1 wins the game
+              if (updatedScore.sets[0]) {
+                updatedScore.sets[0].player1_games += 1;
+              }
+              updatedScore.current_game.player1 = '0';
+              updatedScore.current_game.player2 = '0';
+              break;
+          }
+        } else {
+          switch (updatedScore.current_game.player2) {
+            case '0': updatedScore.current_game.player2 = '15'; break;
+            case '15': updatedScore.current_game.player2 = '30'; break;
+            case '30': updatedScore.current_game.player2 = '40'; break;
+            case '40':
+              if (updatedScore.current_game.player1 === '40') {
+                updatedScore.current_game.player2 = 'AD';
+              } else if (updatedScore.current_game.player1 === 'AD') {
+                updatedScore.current_game.player1 = '40';
+                updatedScore.current_game.player2 = '40';
+              } else {
+                // Player 2 wins the game
+                if (updatedScore.sets[0]) {
+                  updatedScore.sets[0].player2_games += 1;
+                }
+                updatedScore.current_game.player1 = '0';
+                updatedScore.current_game.player2 = '0';
+              }
+              break;
+            case 'AD':
+              // Player 2 wins the game
+              if (updatedScore.sets[0]) {
+                updatedScore.sets[0].player2_games += 1;
+              }
+              updatedScore.current_game.player1 = '0';
+              updatedScore.current_game.player2 = '0';
+              break;
+          }
+        }
       }
       
-      // Set the updated score
-      if (response.data) {
-        const updatedScore = typeof response.data === 'string'
-          ? JSON.parse(response.data)
-          : response.data as MatchScore;
-          
-        setScore(updatedScore);
-        scoreRef.current = updatedScore;
+      // Update the UI immediately
+      setScore(updatedScore);
+      
+      // Update the database through Supabase
+      const { error: updateError } = await supabase
+        .from('matches')
+        .update({ score: updatedScore })
+        .eq('id', match.id);
         
-        // Add to score history
-        setScoreHistory(prev => [...prev, {
-          score: updatedScore,
-          timestamp: Date.now(),
-          action: 'point'
-        }]);
-      }
+      if (updateError) throw updateError;
+      
+      // Add to score history
+      setScoreHistory(prev => [...prev, {
+        score: updatedScore,
+        timestamp: Date.now(),
+        action: 'point'
+      }]);
       
       // Visual feedback for the user
       setLastPointPlayerId(playerId);
       setTimeout(() => setLastPointPlayerId(null), 2000);
       
-    } catch (apiError) {
-      console.error('API error, falling back to direct Supabase call:', apiError);
-      
-      try {
-        // Fallback to direct Supabase RPC call
-        const { data, error: supabaseError } = await supabase.rpc('calculate_tennis_score', {
-          match_id: match.id,
-          winning_player_id: playerId,
-          point_type: pointType || 'point_won'
-        });
-        
-        if (supabaseError) throw supabaseError;
-        
-        if (data) {
-          const updatedScore = typeof data === 'string'
-            ? JSON.parse(data)
-            : data as MatchScore;
-            
-          setScore(updatedScore);
-          scoreRef.current = updatedScore;
-          
-          // Add to score history
-          setScoreHistory(prev => [...prev, {
-            score: updatedScore,
-            timestamp: Date.now(),
-            action: 'point'
-          }]);
-          
-          // Visual feedback for the user
-          setLastPointPlayerId(playerId);
-          setTimeout(() => setLastPointPlayerId(null), 2000);
-        }
-      } catch (supabaseError) {
-        console.error('Supabase error:', supabaseError);
-        setError({
-          visible: true,
-          title: 'Scoring System Error',
-          message: 'We couldn\'t update the score. The scoring system is currently unavailable.',
-          details: supabaseError instanceof Error ? supabaseError.message : 'Unknown error',
-          type: 'error'
-        });
-      }
+    } catch (error: unknown) {
+      console.error('Error updating score:', error);
+      setError({
+        visible: true,
+        title: 'Scoring Error',
+        message: 'We couldn\'t update the score. Please try again.',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        type: 'error'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -483,7 +518,6 @@ const MatchScoring: React.FC<{
     setError({...error, visible: false});
     
     try {
-      console.log('Requesting umpire insight from API');
       const response = await apiClient.getUmpireInsight(match.id, score);
       
       if (!response.success) {
