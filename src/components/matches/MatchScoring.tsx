@@ -236,7 +236,6 @@ const MatchScoring: React.FC<{
 
   useEffect(() => {
     if (score) {
-      setPointType('point_won');
       scoreRef.current = score;
     }
   }, [score]);
@@ -363,7 +362,7 @@ const MatchScoring: React.FC<{
     }
   };
 
-  const handleUndo = () => {
+  const handleUndo = async () => {
     if (scoreHistory.length > 1 && !isSubmitting) {
       setIsSubmitting(true);
       setError({...error, visible: false});
@@ -375,30 +374,16 @@ const MatchScoring: React.FC<{
         const previousScore = newHistory[newHistory.length - 1].score;
         
         // Update the match with the previous score
-        supabase
+        const { error: updateError } = await supabase
           .from('matches')
           .update({ score: previousScore })
-          .eq('id', match.id)
-          .then(({ error }) => {
-            if (error) {
-              throw error;
-            }
-            setScoreHistory(newHistory);
-            setScore(previousScore);
-            scoreRef.current = previousScore;
-          })
-          .catch((err) => {
-            setError({
-              visible: true,
-              title: 'Undo Failed',
-              message: 'We couldn\'t undo your last action. Please try again.',
-              details: err.message,
-              type: 'error'
-            });
-          })
-          .finally(() => {
-            setIsSubmitting(false);
-          });
+          .eq('id', match.id);
+          
+        if (updateError) throw updateError;
+        
+        setScoreHistory(newHistory);
+        setScore(previousScore);
+        scoreRef.current = previousScore;
       } catch (err: any) {
         console.error('Error undoing point:', err);
         setError({
@@ -408,6 +393,7 @@ const MatchScoring: React.FC<{
           details: err.message,
           type: 'error'
         });
+      } finally {
         setIsSubmitting(false);
       }
     }
