@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import Webcam from "react-webcam";
-import { Video, Play, Pause, Save, Trash, Zap, Target, Award, Sparkles, AlertCircle, Loader2, Activity, Star, TrendingUp } from "lucide-react";
+import { Video, Play, Pause, Save, Trash, Zap, Target, Award, Sparkles, AlertCircle, Loader2, Activity, Star, TrendingUp, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-backend-webgl';
@@ -464,7 +464,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
           className="p-2 rounded-md hover:bg-hover-bg"
           style={{ color: 'var(--text-subtle)' }}
         >
-          <Loader2 className="h-5 w-5" />
+          <X className="h-5 w-5" />
           Back
         </button>
       </div>
