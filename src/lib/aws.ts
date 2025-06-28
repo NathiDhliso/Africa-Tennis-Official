@@ -189,6 +189,11 @@ class ApiClient {
   async healthCheck() {
     return this.request('/health');
   }
+  
+  // Aggregate stats
+  async aggregatePlayerStats(playerId: string) {
+    return this.request(`/aggregate-stats?player_id=${playerId}`);
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL)
