@@ -358,7 +358,10 @@ export const MatchList: React.FC = () => {
         <CreateMatchModal
           isOpen={showCreateForm}
           onClose={() => setShowCreateForm(false)}
-          onMatchCreated={() => setShowCreateForm(false)} // Query invalidation handles the refresh
+          onMatchCreated={() => {
+            setShowCreateForm(false);
+            refetch();
+          }}
           mode="create"
         />
       )}

@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { apiClient } from '../lib/aws';
 import type { Database } from '../types/database';
 
 type Match = Database['public']['Tables']['matches']['Row'];
@@ -12,13 +11,6 @@ const fetchMatches = async (userId?: string): Promise<Match[]> => {
   }
   
   try {
-    // First try to use the API Gateway endpoint
-    const response = await apiClient.getMatches(userId);
-    if (response.success && Array.isArray(response.data)) {
-      return response.data;
-    }
-    
-    // Fallback to direct Supabase query if API fails
     const { data, error } = await supabase
       .from('matches')
       .select(`
