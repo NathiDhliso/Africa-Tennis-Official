@@ -58,6 +58,8 @@ class ApiClient {
     }
 
     try {
+      console.log(`Making API request to: ${url}`, { method: options.method || 'GET' });
+      
       const response = await fetch(url, {
         ...options,
         headers
@@ -75,6 +77,7 @@ class ApiClient {
       if (!contentType || !contentType.includes('application/json')) {
         // Handle non-JSON responses
         const text = await response.text();
+        console.error('Server returned non-JSON response:', text);
         throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
       }
 
@@ -222,6 +225,7 @@ class ApiClient {
     winningPlayerId: string;
     pointType?: string;
   }) {
+    console.log(`Updating match score for match ${matchId}`, data);
     return this.request(`/matches/${matchId}/score`, {
       method: 'POST',
       body: JSON.stringify(data)

@@ -57,11 +57,6 @@ interface MatchScoreHistory {
   action: string;
 }
 
-interface UmpireInsight {
-  insight: string;
-  timestamp: string;
-}
-
 interface ErrorState {
   visible: boolean;
   title: string;
@@ -70,15 +65,15 @@ interface ErrorState {
   type: 'error' | 'warning' | 'info';
 }
 
-interface MatchScoringProps {
-  match: Match;
-  onBack: () => void;
+interface UmpireInsight {
+  insight: string;
+  timestamp: string;
 }
 
-const MatchScoring: React.FC<MatchScoringProps> = ({ 
-  match, 
-  onBack
-}) => {
+const MatchScoring: React.FC<{
+  match: Match;
+  onBack: () => void;
+}> = ({ match, onBack }) => {
   const { user } = useAuthStore();
   const [score, setScore] = useState<MatchScore | null>(null);
   const [pointType, setPointType] = useState<string>('point_won');
@@ -200,31 +195,34 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
           event: 'UPDATE',
           schema: 'public',
           table: 'matches',
-          filter: `id=eq.${match.id}`,
+          filter: `id=eq.${match.id}`
         },
         (payload) => {
-          if (payload.new && payload.new.score) {
-            try {
-              const newScore = typeof payload.new.score === 'string' 
-                ? JSON.parse(payload.new.score) 
-                : payload.new.score as MatchScore;
+          if (payload.new) {
+            const newMatch = payload.new as Match;
+            if (newMatch.score) {
+              try {
+                const newScore = typeof newMatch.score === 'string' 
+                  ? JSON.parse(newMatch.score) 
+                  : newMatch.score as MatchScore;
+                  
+                setScore(newScore);
+                scoreRef.current = newScore;
                 
-              setScore(newScore);
-              scoreRef.current = newScore;
-              
-              // Add to score history
-              setScoreHistory(prev => [...prev, {
-                score: newScore,
-                timestamp: Date.now(),
-                action: 'update'
-              }]);
+                // Add to score history
+                setScoreHistory(prev => [...prev, {
+                  score: newScore,
+                  timestamp: Date.now(),
+                  action: 'update'
+                }]);
 
-              if (payload.new.status === 'completed') {
-                setSuccessMessage('Match completed!');
-                setTimeout(() => onBack(), 3000);
+                if (newMatch.status === 'completed') {
+                  setSuccessMessage('Match completed!');
+                  setTimeout(() => onBack(), 3000);
+                }
+              } catch (err) {
+                console.error('Error processing score update:', err);
               }
-            } catch (err) {
-              console.error('Error processing score update:', err);
             }
           }
         }
@@ -250,6 +248,8 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     setError({...error, visible: false});
 
     try {
+      console.log(`Awarding point to player ${playerId} with point type ${pointType}`);
+      
       // First try the API Gateway endpoint
       const response = await apiClient.updateMatchScore(match.id, {
         winningPlayerId: playerId,

@@ -4,8 +4,21 @@ import cors from 'cors';
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
+
+// Set Content-Security-Policy header for all responses
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' *;"
+  );
+  next();
+});
 
 // Mock AI Coach endpoint - Player Style Analysis
 app.post('/players/:playerId/generate-style', (req, res) => {
@@ -123,6 +136,8 @@ app.post('/tournaments/:tournamentId/generate-bracket', (req, res) => {
 app.post('/matches/:matchId/score', (req, res) => {
   const { matchId } = req.params;
   const { winningPlayerId, pointType } = req.body;
+  
+  console.log(`Mock API: Updating score for match ${matchId}`, { winningPlayerId, pointType });
   
   // Simulate processing delay
   setTimeout(() => {
@@ -257,6 +272,15 @@ app.get('/aggregate-stats', (req, res) => {
       }
     });
   }, 1000);
+});
+
+// Catch-all route for debugging
+app.use('*', (req, res) => {
+  console.log(`Received request: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    error: `Endpoint not found: ${req.method} ${req.originalUrl}`
+  });
 });
 
 app.listen(PORT, () => {
