@@ -483,6 +483,7 @@ const MatchScoring: React.FC<{
     setError({...error, visible: false});
     
     try {
+      console.log('Requesting umpire insight from API');
       const response = await apiClient.getUmpireInsight(match.id, score);
       
       if (!response.success) {

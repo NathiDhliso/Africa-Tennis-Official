@@ -26,6 +26,7 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
     setSuccess(null);
 
     try {
+      console.log(`Generating player style analysis for ${selectedPlayer.username} (${selectedPlayer.user_id})`);
       const response = await apiClient.generatePlayerStyle(selectedPlayer.user_id);
 
       if (!response.success) {
