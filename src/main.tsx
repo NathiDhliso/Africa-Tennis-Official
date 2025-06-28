@@ -1,16 +1,30 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import App from './App.tsx'
+import { ErrorBoundary } from 'react-error-boundary'
+import LoadingSpinner from './components/LoadingSpinner'
 import './index.css'
+
+// Lazy load App component for better initial load performance
+const App = lazy(() => import('./App'))
 
 // Set up API auth token from Supabase session
 import { supabase } from './lib/supabase'
 import { setApiAuthToken } from './lib/aws'
 
-// Create a client
-const queryClient = new QueryClient()
+// Create a client with optimized settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      cacheTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+      suspense: false,
+    },
+  },
+})
 
 // Get session and set API token
 supabase.auth.getSession().then(({ data: { session } }) => {
@@ -47,12 +61,38 @@ const preloadResources = () => {
 // Execute preloading
 preloadResources();
 
+// Error fallback component
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-bg-deep-space">
+      <div className="bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-6 max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4 text-error-pink">Something went wrong</h2>
+        <p className="mb-4 text-text-standard">{error.message}</p>
+        <button
+          onClick={resetErrorBoundary}
+          className="btn btn-primary w-full"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+              <LoadingSpinner size="large" text="Loading Africa Tennis" />
+            </div>
+          }>
+            <App />
+          </Suspense>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>
 )

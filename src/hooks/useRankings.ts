@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface RankingPlayer {
@@ -17,6 +17,7 @@ interface RankingPlayer {
 
 const RANKINGS_STORAGE_KEY = 'africa-tennis-previous-rankings';
 
+// Optimized fetch function with caching
 const fetchRankings = async (): Promise<RankingPlayer[]> => {
   const { data, error } = await supabase
     .from('profiles')
@@ -73,9 +74,10 @@ const calculateRankChanges = (
 
 export const useRankings = () => {
   const queryClient = useQueryClient();
+  const queryKey = useMemo(() => ['rankings'], []);
 
   const result = useQuery({
-    queryKey: ['rankings'],
+    queryKey,
     queryFn: fetchRankings,
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
@@ -118,7 +120,7 @@ export const useRankings = () => {
           columns: ['elo_rating', 'matches_played', 'matches_won']
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['rankings'] });
+          queryClient.invalidateQueries({ queryKey });
         }
       )
       .subscribe();
@@ -126,10 +128,11 @@ export const useRankings = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, queryKey]);
 
   return {
     ...result,
-    rankings: result.data || []
+    rankings: result.data || [],
+    refetch: result.refetch
   };
 };

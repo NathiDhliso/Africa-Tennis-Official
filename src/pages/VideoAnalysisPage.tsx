@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Video, Film, Zap, Info, X } from 'lucide-react';
-import VideoTrackingPanel from '../components/video/VideoTrackingPanel';
+import { ArrowLeft, Video, Film, Zap, Info, X, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+// Lazy load components for better performance
+const VideoTrackingPanel = lazy(() => import('../components/video/VideoTrackingPanel'));
+const VideoHighlightsList = lazy(() => import('../components/video/VideoHighlightsList'));
 
 interface VideoHighlight {
   id: string;
@@ -22,55 +26,27 @@ const VideoAnalysisPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'live' | 'highlights'>('live');
   const [currentHighlight, setCurrentHighlight] = useState<VideoHighlight | null>(null);
   const [showHighlightPlayer, setShowHighlightPlayer] = useState(false);
-  const [highlights, setHighlights] = useState<VideoHighlight[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if storage bucket exists and create it if needed
   useEffect(() => {
-    const fetchHighlights = async () => {
-      if (!user) return;
-      
-      setIsLoading(true);
-      setError(null);
-      
+    const checkStorageBucket = async () => {
       try {
-        let query = supabase
-          .from('match_highlights')
-          .select('*')
-          .order('timestamp', { ascending: false });
-          
-        if (matchId) {
-          query = query.eq('match_id', matchId);
+        // Try to get bucket info
+        const { data, error } = await supabase.storage.getBucket('match-highlights');
+        
+        if (error) {
+          console.error('Error checking storage bucket:', error);
+          setError('Storage setup issue. Please contact support.');
         }
-        
-        const { data, error: fetchError } = await query;
-        
-        if (fetchError) throw fetchError;
-        
-        setHighlights(data || []);
       } catch (err) {
-        console.error('Error fetching highlights:', err);
-        setError('Failed to load video highlights');
-      } finally {
-        setIsLoading(false);
+        console.error('Error in storage check:', err);
       }
     };
     
-    fetchHighlights();
-    
-    // Set up real-time subscription for highlights
-    const highlightsSubscription = supabase
-      .channel('match-highlights')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'match_highlights' },
-        fetchHighlights
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(highlightsSubscription);
-    };
-  }, [matchId, user]);
+    checkStorageBucket();
+  }, []);
 
   const handleBack = () => {
     if (matchId) {
@@ -95,35 +71,17 @@ const VideoAnalysisPage: React.FC = () => {
     setCurrentHighlight(null);
   };
 
-  const handleDeleteHighlight = async (highlight: VideoHighlight) => {
-    try {
-      // Delete the video file from storage
-      const { error: storageError } = await supabase.storage
-        .from('match-highlights')
-        .remove([highlight.video_url]);
-        
-      if (storageError) throw storageError;
-      
-      // Delete the highlight record from the database
-      const { error: dbError } = await supabase
-        .from('match_highlights')
-        .delete()
-        .eq('id', highlight.id);
-        
-      if (dbError) throw dbError;
-      
-      // Update local state
-      setHighlights(highlights.filter(h => h.id !== highlight.id));
-    } catch (err) {
-      console.error('Error deleting highlight:', err);
-      setError('Failed to delete highlight');
-    }
-  };
-
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
   };
+
+  // Loading fallback component
+  const TabContentFallback = () => (
+    <div className="flex items-center justify-center py-12">
+      <LoadingSpinner size="large" text="Loading content..." />
+    </div>
+  );
 
   return (
     <div className="min-h-screen p-4 md:p-8" style={{ background: 'var(--bg-deep-space)' }}>
@@ -183,118 +141,42 @@ const VideoAnalysisPage: React.FC = () => {
           </button>
         </div>
 
-        {activeTab === 'live' ? (
-          <VideoTrackingPanel 
-            matchId={matchId} 
-            onVideoSaved={handleSaveHighlight}
-            onClose={() => setActiveTab('highlights')}
-          />
-        ) : (
-          <div className="bg-glass-bg border border-glass-border rounded-lg p-6">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: 'var(--text-standard)' }}>
-              <Film className="h-6 w-6 text-quantum-cyan" />
-              Match Highlights
-            </h2>
-            
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-12 h-12 border-t-2 border-b-2 border-quantum-cyan rounded-full animate-spin mb-4"></div>
-                <p style={{ color: 'var(--text-standard)' }}>Loading highlights...</p>
-              </div>
-            ) : highlights.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Video className="h-16 w-16 mb-4" style={{ color: 'var(--text-muted)' }} />
-                <h3 className="text-xl font-medium mb-2" style={{ color: 'var(--text-standard)' }}>No Highlights Available</h3>
-                <p className="max-w-md" style={{ color: 'var(--text-subtle)' }}>
-                  Record match highlights using the Live Tracking feature to see them here.
-                </p>
-                <button
-                  onClick={() => setActiveTab('live')}
-                  className="mt-6 btn btn-primary"
-                >
-                  <Zap className="h-5 w-5 mr-2" />
-                  Start Recording
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {highlights.map((highlight) => (
-                  <div 
-                    key={highlight.id} 
-                    className="rounded-lg overflow-hidden"
-                    style={{ 
-                      backgroundColor: 'var(--bg-elevated)', 
-                      border: '1px solid var(--border-subtle)'
-                    }}
-                  >
-                    <div className="aspect-video bg-black relative">
-                      <video 
-                        src={highlight.video_url}
-                        className="w-full h-full object-contain"
-                        onClick={() => handlePlayHighlight(highlight)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <div 
-                        className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                        style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-                      >
-                        <button 
-                          className="w-16 h-16 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: 'var(--quantum-cyan)' }}
-                          onClick={() => handlePlayHighlight(highlight)}
-                        >
-                          <Play className="h-8 w-8 text-white" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div 
-                          className="px-2 py-1 rounded-full text-xs font-medium"
-                          style={{ 
-                            backgroundColor: 'rgba(0, 212, 255, 0.1)', 
-                            color: 'var(--quantum-cyan)'
-                          }}
-                        >
-                          {highlight.type.replace('_', ' ')}
-                        </div>
-                        <div className="text-xs" style={{ color: 'var(--text-subtle)' }}>
-                          {formatTimestamp(highlight.timestamp)}
-                        </div>
-                      </div>
-                      <p className="mb-4" style={{ color: 'var(--text-standard)' }}>
-                        {highlight.description}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handlePlayHighlight(highlight)}
-                          className="flex-1 py-2 rounded-md flex items-center justify-center gap-1 text-sm font-medium"
-                          style={{ 
-                            backgroundColor: 'var(--quantum-cyan)', 
-                            color: 'white'
-                          }}
-                        >
-                          <Play className="h-4 w-4" />
-                          Play
-                        </button>
-                        <button
-                          onClick={() => handleDeleteHighlight(highlight)}
-                          className="py-2 px-3 rounded-md flex items-center justify-center text-sm"
-                          style={{ 
-                            backgroundColor: 'rgba(255, 51, 102, 0.1)', 
-                            color: 'var(--error-pink)'
-                          }}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-error-pink bg-opacity-10 border border-error-pink border-opacity-20 flex items-start gap-3">
+            <Info className="h-5 w-5 text-error-pink flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-error-pink">{error}</p>
+              <button 
+                onClick={() => setError(null)}
+                className="text-sm text-error-pink underline mt-1"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
+
+        <Suspense fallback={<TabContentFallback />}>
+          {activeTab === 'live' ? (
+            <VideoTrackingPanel 
+              matchId={matchId} 
+              onVideoSaved={handleSaveHighlight}
+              onClose={() => setActiveTab('highlights')}
+            />
+          ) : (
+            <div className="bg-glass-bg border border-glass-border rounded-lg p-6">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: 'var(--text-standard)' }}>
+                <Film className="h-6 w-6 text-quantum-cyan" />
+                Match Highlights
+              </h2>
+              
+              <VideoHighlightsList 
+                matchId={matchId}
+                onPlayHighlight={handlePlayHighlight}
+              />
+            </div>
+          )}
+        </Suspense>
 
         {/* Info Banner */}
         <div 

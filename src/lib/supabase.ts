@@ -13,7 +13,7 @@ if (!supabaseAnonKey) {
   throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file.')
 }
 
-// Create the Supabase client
+// Create the Supabase client with optimized settings
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -22,15 +22,33 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   realtime: {
     params: {
-      eventsPerSecond: 10
+      eventsPerSecond: 5 // Reduced from 10 to minimize network traffic
     }
   },
   global: {
     headers: {
       'x-application-name': 'africa-tennis-platform'
     }
+  },
+  db: {
+    schema: 'public'
+  },
+  // Add fetch options for better performance
+  fetch: (url, options) => {
+    const fetchOptions = {
+      ...options,
+      // Add cache control for better performance
+      headers: {
+        ...options?.headers,
+        'Cache-Control': 'no-cache'
+      }
+    };
+    return fetch(url, fetchOptions);
   }
 })
+
+// Create a singleton instance for storage operations
+export const storage = supabase.storage;
 
 // Helper function to handle Supabase errors consistently
 export const handleSupabaseError = (error: unknown): string => {
@@ -60,4 +78,19 @@ export const handleSupabaseError = (error: unknown): string => {
   }
   
   return 'An unexpected error occurred';
+};
+
+// Utility function to check if a bucket exists
+export const checkBucketExists = async (bucketName: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.storage.getBucket(bucketName);
+    if (error) {
+      console.error(`Bucket ${bucketName} does not exist:`, error);
+      return false;
+    }
+    return !!data;
+  } catch (err) {
+    console.error(`Error checking bucket ${bucketName}:`, err);
+    return false;
+  }
 };

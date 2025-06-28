@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Play, Trash, Download, Info, X, Video, Activity, Star, TrendingUp, Zap, Target, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useInView } from 'react-intersection-observer';
 
 interface VideoHighlight {
   id: string;
@@ -17,7 +18,8 @@ interface VideoHighlightsListProps {
   onPlayHighlight?: (highlight: VideoHighlight) => void;
 }
 
-const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({ 
+// Memoized component to prevent unnecessary re-renders
+const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({ 
   matchId,
   onPlayHighlight 
 }) => {
@@ -26,43 +28,37 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedHighlight, setSelectedHighlight] = useState<VideoHighlight | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 6;
+  
+  // Use intersection observer for infinite scrolling
+  const { ref, inView } = useInView({
+    threshold: 0.1,
+    triggerOnce: false,
+  });
 
+  // Load more highlights when bottom is reached
   useEffect(() => {
-    const fetchHighlights = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        let query = supabase
-          .from('match_highlights')
-          .select('*')
-          .order('timestamp', { ascending: false });
-          
-        if (matchId) {
-          query = query.eq('match_id', matchId);
-        }
-        
-        const { data, error: fetchError } = await query;
-        
-        if (fetchError) throw fetchError;
-        
-        setHighlights(data || []);
-      } catch (err) {
-        console.error('Error fetching highlights:', err);
-        setError('Failed to load video highlights');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchHighlights();
+    if (inView && !isLoading && hasMore) {
+      loadMoreHighlights();
+    }
+  }, [inView]);
+
+  // Initial load of highlights
+  useEffect(() => {
+    fetchHighlights(0);
     
     // Set up real-time subscription for highlights
     const highlightsSubscription = supabase
       .channel('match-highlights')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'match_highlights' },
-        fetchHighlights
+        () => {
+          // Reset and reload highlights when changes occur
+          setPage(0);
+          fetchHighlights(0);
+        }
       )
       .subscribe();
       
@@ -70,6 +66,49 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
       supabase.removeChannel(highlightsSubscription);
     };
   }, [matchId]);
+
+  // Fetch highlights with pagination
+  const fetchHighlights = async (pageNum: number) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      let query = supabase
+        .from('match_highlights')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+        
+      if (matchId) {
+        query = query.eq('match_id', matchId);
+      }
+      
+      const { data, error: fetchError, count } = await query;
+      
+      if (fetchError) throw fetchError;
+      
+      if (pageNum === 0) {
+        setHighlights(data || []);
+      } else {
+        setHighlights(prev => [...prev, ...(data || [])]);
+      }
+      
+      // Check if there are more highlights to load
+      setHasMore((data?.length || 0) === PAGE_SIZE);
+    } catch (err) {
+      console.error('Error fetching highlights:', err);
+      setError('Failed to load video highlights');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load more highlights
+  const loadMoreHighlights = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchHighlights(nextPage);
+  };
 
   const handlePlayHighlight = (highlight: VideoHighlight) => {
     setSelectedHighlight(highlight);
@@ -169,7 +208,7 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
     return date.toLocaleString();
   };
 
-  if (isLoading) {
+  if (isLoading && highlights.length === 0) {
     return (
       <div className="video-highlights-loading">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -178,7 +217,7 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
     );
   }
 
-  if (error) {
+  if (error && highlights.length === 0) {
     return (
       <div className="video-highlights-error">
         <AlertCircle className="h-8 w-8" />
@@ -201,51 +240,69 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
           <p className="text-sm">Record match highlights to see them here</p>
         </div>
       ) : (
-        <div className="video-highlights-grid">
-          {highlights.map((highlight) => (
-            <div key={highlight.id} className="video-highlight-card">
-              <div className="video-highlight-header">
-                <div className="video-highlight-type">
-                  {getHighlightTypeIcon(highlight.type)}
-                  <span>{highlight.type.replace('_', ' ')}</span>
+        <>
+          <div className="video-highlights-grid">
+            {highlights.map((highlight) => (
+              <div key={highlight.id} className="video-highlight-card">
+                <div className="video-highlight-header">
+                  <div className="video-highlight-type">
+                    {getHighlightTypeIcon(highlight.type)}
+                    <span>{highlight.type.replace('_', ' ')}</span>
+                  </div>
+                  <div className="video-highlight-timestamp">
+                    {formatTimestamp(highlight.timestamp)}
+                  </div>
                 </div>
-                <div className="video-highlight-timestamp">
-                  {formatTimestamp(highlight.timestamp)}
+                
+                <div className="video-highlight-description">
+                  {highlight.description}
+                </div>
+                
+                <div className="video-highlight-actions">
+                  <button
+                    onClick={() => handlePlayHighlight(highlight)}
+                    className="video-highlight-action video-highlight-play"
+                  >
+                    <Play className="h-4 w-4" />
+                    Play
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDownloadHighlight(highlight)}
+                    className="video-highlight-action video-highlight-download"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDeleteHighlight(highlight)}
+                    className="video-highlight-action video-highlight-delete"
+                  >
+                    <Trash className="h-4 w-4" />
+                    Delete
+                  </button>
                 </div>
               </div>
-              
-              <div className="video-highlight-description">
-                {highlight.description}
-              </div>
-              
-              <div className="video-highlight-actions">
-                <button
-                  onClick={() => handlePlayHighlight(highlight)}
-                  className="video-highlight-action video-highlight-play"
+            ))}
+          </div>
+          
+          {/* Load more trigger */}
+          {hasMore && (
+            <div ref={ref} className="flex justify-center mt-6 py-4">
+              {isLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-quantum-cyan" />
+              ) : (
+                <button 
+                  onClick={loadMoreHighlights}
+                  className="btn btn-secondary"
                 >
-                  <Play className="h-4 w-4" />
-                  Play
+                  Load More Highlights
                 </button>
-                
-                <button
-                  onClick={() => handleDownloadHighlight(highlight)}
-                  className="video-highlight-action video-highlight-download"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </button>
-                
-                <button
-                  onClick={() => handleDeleteHighlight(highlight)}
-                  className="video-highlight-action video-highlight-delete"
-                >
-                  <Trash className="h-4 w-4" />
-                  Delete
-                </button>
-              </div>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
       
       {/* Delete Confirmation Modal */}
@@ -281,6 +338,8 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({
       )}
     </div>
   );
-};
+});
+
+VideoHighlightsList.displayName = 'VideoHighlightsList';
 
 export default VideoHighlightsList;

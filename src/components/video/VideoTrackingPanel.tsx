@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, memo } from "react";
 import Webcam from "react-webcam";
 import { Video, Play, Pause, Save, Trash, Zap, Target, Award, Sparkles, AlertCircle, Loader2, Activity, Star, TrendingUp, X } from "lucide-react";
 import { supabase } from "../../lib/supabase";
@@ -13,7 +13,8 @@ interface VideoTrackingPanelProps {
   onClose: () => void;
 }
 
-const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({ 
+// Memoized component to prevent unnecessary re-renders
+const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({ 
   matchId,
   onVideoSaved,
   onClose
@@ -43,6 +44,11 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
   const [poseDetectionModel, setPoseDetectionModel] = useState<poseDetection.PoseDetector | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [modelsLoaded, setModelsLoaded] = useState<{tf: boolean, object: boolean, pose: boolean}>({
+    tf: false,
+    object: false,
+    pose: false
+  });
   
   // Load available camera devices
   useEffect(() => {
@@ -64,7 +70,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
     getDevices();
   }, []);
   
-  // Load TensorFlow models
+  // Load TensorFlow models with progress tracking
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -73,6 +79,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
         // Load TensorFlow.js backend
         await tf.setBackend('webgl');
         console.log('TensorFlow backend loaded:', tf.getBackend());
+        setModelsLoaded(prev => ({...prev, tf: true}));
         
         // Load COCO-SSD model for object detection (ball, racket)
         const objectModel = await cocoSsd.load({
@@ -80,6 +87,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
         });
         setObjectDetectionModel(objectModel);
         console.log('Object detection model loaded');
+        setModelsLoaded(prev => ({...prev, object: true}));
         
         // Load PoseNet model for player pose detection
         const poseModel = await poseDetection.createDetector(
@@ -88,6 +96,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
         );
         setPoseDetectionModel(poseModel);
         console.log('Pose detection model loaded');
+        setModelsLoaded(prev => ({...prev, pose: true}));
         
         setIsModelLoading(false);
       } catch (err) {
@@ -282,7 +291,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
     }
   }, [recordedChunks, highlightType, highlightDescription, matchId, onVideoSaved]);
 
-  // Start AI tracking
+  // Start AI tracking - memoized to prevent unnecessary recreations
   const startTracking = useCallback(async () => {
     if (!webcamRef.current?.video || !canvasRef.current || !objectDetectionModel || !poseDetectionModel) {
       return;
@@ -452,6 +461,31 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
     setSelectedCamera(e.target.value);
   };
 
+  // Render loading progress
+  const renderModelLoadingProgress = () => {
+    const loadedCount = Object.values(modelsLoaded).filter(Boolean).length;
+    const totalModels = Object.keys(modelsLoaded).length;
+    const progress = Math.round((loadedCount / totalModels) * 100);
+    
+    return (
+      <div className="flex flex-col items-center justify-center h-full" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <Loader2 className="h-12 w-12 animate-spin mb-4" style={{ color: 'var(--quantum-cyan)' }} />
+        <p className="text-lg font-medium" style={{ color: 'var(--text-standard)' }}>Loading AI tracking models... {progress}%</p>
+        <div className="w-64 h-2 bg-bg-surface-gray rounded-full mt-4 overflow-hidden">
+          <div 
+            className="h-full bg-quantum-cyan"
+            style={{ width: `${progress}%`, transition: 'width 0.3s ease-in-out' }}
+          ></div>
+        </div>
+        <p className="text-sm mt-4" style={{ color: 'var(--text-subtle)' }}>
+          {modelsLoaded.tf ? '✓' : '⟳'} TensorFlow Core
+          {modelsLoaded.object ? ' ✓' : ' ⟳'} Object Detection
+          {modelsLoaded.pose ? ' ✓' : ' ⟳'} Pose Detection
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="video-tracking-panel">
       <div className="flex justify-between items-center mb-6">
@@ -512,11 +546,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
         <div className="video-capture-container">
           <div className="video-preview-container">
             {isModelLoading ? (
-              <div className="flex flex-col items-center justify-center h-full" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-                <Loader2 className="h-12 w-12 animate-spin mb-4" style={{ color: 'var(--quantum-cyan)' }} />
-                <p className="text-lg font-medium" style={{ color: 'var(--text-standard)' }}>Loading AI tracking models...</p>
-                <p className="text-sm" style={{ color: 'var(--text-subtle)' }}>This may take a moment</p>
-              </div>
+              renderModelLoadingProgress()
             ) : (
               <>
                 <Webcam
@@ -708,6 +738,8 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = ({
       </div>
     </div>
   );
-};
+});
+
+VideoTrackingPanel.displayName = 'VideoTrackingPanel';
 
 export default VideoTrackingPanel;

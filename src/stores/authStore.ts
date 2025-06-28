@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
@@ -19,6 +19,7 @@ interface AuthState {
   initialize: () => Promise<void>;
 }
 
+// Create a more efficient store with optimized persistence
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -43,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           // Listen for auth changes
-          supabase.auth.onAuthStateChange(async (event, session) => {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session) {
               set({ 
                 user: session.user, 
@@ -60,6 +61,11 @@ export const useAuthStore = create<AuthState>()(
               });
             }
           });
+
+          // Return unsubscribe function
+          return () => {
+            subscription.unsubscribe();
+          };
         } catch (error) {
           console.error('Auth initialization error:', error);
           set({ loading: false });
@@ -169,11 +175,14 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         user: state.user, 
         profile: state.profile,
         session: state.session 
-      })
+      }),
+      // Only rehydrate on page load, not on hot reloads during development
+      skipHydration: true,
     }
   )
 );

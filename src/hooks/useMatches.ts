@@ -1,10 +1,11 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useQuery, useQueryClient, useCallback } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
 
 type Match = Database['public']['Tables']['matches']['Row'];
 
+// Optimized fetch function with caching
 const fetchMatches = async (userId?: string): Promise<Match[]> => {
   if (!userId) {
     return [];
@@ -32,14 +33,27 @@ const fetchMatches = async (userId?: string): Promise<Match[]> => {
 
 export const useMatches = (userId?: string) => {
   const queryClient = useQueryClient();
+  const queryKey = useMemo(() => ['matches', userId], [userId]);
+
+  // Prefetch function for optimistic updates
+  const prefetchMatches = useCallback(async () => {
+    if (!userId) return;
+    await queryClient.prefetchQuery({
+      queryKey,
+      queryFn: () => fetchMatches(userId),
+    });
+  }, [queryClient, queryKey, userId]);
 
   const queryResult = useQuery({
-    queryKey: ['matches', userId],
+    queryKey,
     queryFn: () => fetchMatches(userId),
     enabled: !!userId,
     staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 
+  // Set up real-time subscription for matches
   useEffect(() => {
     if (!userId) return;
 
@@ -54,7 +68,8 @@ export const useMatches = (userId?: string) => {
           filter: `or(player1_id.eq.${userId},player2_id.eq.${userId})`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['matches', userId] });
+          // Invalidate query to trigger refetch
+          queryClient.invalidateQueries({ queryKey });
         }
       )
       .subscribe();
@@ -62,7 +77,10 @@ export const useMatches = (userId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, queryKey]);
 
-  return queryResult;
+  return {
+    ...queryResult,
+    prefetchMatches,
+  };
 };
