@@ -1,35 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
+  Play, 
+  Pause, 
+  RotateCcw, 
+  CheckCircle, 
+  Clock, 
   Trophy, 
-  Plus, 
-  Loader2, 
+  Users,
   AlertTriangle,
-  CheckCircle,
   ArrowLeft,
-  RotateCcw,
+  Plus,
+  Minus,
+  Zap,
+  Target,
+  Award,
+  Gavel,
+  Info,
   Sparkles,
+  Loader2,
   X
 } from 'lucide-react';
-import LoadingSpinner from '../LoadingSpinner';
-import { useMatchMutations } from '../../hooks/useMatchMutations';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/aws';
+import LoadingSpinner from '../LoadingSpinner';
 import type { Database } from '../../types/database';
 
+type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type Match = Database['public']['Tables']['matches']['Row'] & {
-  player1?: { username: string; elo_rating: number };
-  player2?: { username: string; elo_rating: number };
+  player1?: { username: string; elo_rating: number }
+  player2?: { username: string; elo_rating: number }
 };
 
-type PointType = 'point_won' | 'ace' | 'winner' | 'double_fault' | 'forced_error' | 'unforced_error';
-
-interface MatchScoringProps {
-  match: Match;
-  onBack: () => void;
-}
-
-interface TennisScore {
+interface MatchScore {
   sets: Array<{
     player1_games: number;
     player2_games: number;
@@ -48,7 +51,7 @@ interface TennisScore {
 }
 
 interface MatchScoreHistory {
-  score: TennisScore;
+  score: MatchScore;
   timestamp: number;
   action: string;
 }
@@ -58,15 +61,34 @@ interface UmpireInsight {
   timestamp: string;
 }
 
+interface ErrorState {
+  visible: boolean;
+  title: string;
+  message: string;
+  details?: string;
+  type: 'error' | 'warning' | 'info';
+}
+
+interface MatchScoringProps {
+  match: Match;
+  onBack: () => void;
+}
+
 const MatchScoring: React.FC<MatchScoringProps> = ({ 
   match, 
   onBack
 }) => {
   const { user } = useAuthStore();
-  const [score, setScore] = useState<TennisScore | null>(null);
-  const [pointType, setPointType] = useState<PointType>('point_won');
+  const [score, setScore] = useState<MatchScore | null>(null);
+  const [pointType, setPointType] = useState<string>('point_won');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState>({
+    visible: false,
+    title: '',
+    message: '',
+    details: '',
+    type: 'error'
+  });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [confirmEndMatch, setConfirmEndMatch] = useState(false);
   const [lastPointPlayerId, setLastPointPlayerId] = useState<string | null>(null);
@@ -74,12 +96,10 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   const [player1Profile, setPlayer1Profile] = useState<any>(null);
   const [player2Profile, setPlayer2Profile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const scoreRef = useRef<TennisScore | null>(null);
+  const scoreRef = useRef<MatchScore | null>(null);
   const [umpireInsight, setUmpireInsight] = useState<UmpireInsight | null>(null);
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
-
-  const { awardPoint, updateMatch } = useMatchMutations(user?.id ?? '');
 
   useEffect(() => {
     const initializeScore = () => {
@@ -97,7 +117,12 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
           }]);
         } catch (err) {
           console.error('Error parsing score:', err);
-          setError('Error loading match score');
+          setError({
+            visible: true,
+            title: 'Error Loading Score',
+            message: 'There was a problem loading the match score.',
+            type: 'error'
+          });
         }
       } else {
         const defaultScore = {
@@ -134,7 +159,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         },
         (payload) => {
           if (payload.new && payload.new.score) {
-            const newScore = payload.new.score as TennisScore;
+            const newScore = payload.new.score as MatchScore;
             setScore(newScore);
             scoreRef.current = newScore;
             
@@ -170,19 +195,41 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     if (isSubmitting) return;
 
     setIsSubmitting(true);
-    setError(null);
+    setError({...error, visible: false});
 
     try {
-      await awardPoint.mutateAsync({
-        matchId: match.id,
+      const response = await apiClient.updateMatchScore(match.id, {
         winningPlayerId: playerId,
         pointType: pointType,
       });
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update score');
+      }
+      
+      // Set the updated score
+      if (response.data) {
+        setScore(response.data as MatchScore);
+        scoreRef.current = response.data as MatchScore;
+        
+        // Add to score history
+        setScoreHistory(prev => [...prev, {
+          score: response.data as MatchScore,
+          timestamp: Date.now(),
+          action: 'point'
+        }]);
+      }
+      
       setLastPointPlayerId(playerId);
       setTimeout(() => setLastPointPlayerId(null), 2000);
     } catch (err: any) {
       console.error('Error awarding point:', err);
-      setError(err.message || 'Failed to award point');
+      setError({
+        visible: true,
+        title: 'Error Updating Score',
+        message: err.message || 'Failed to award point',
+        type: 'error'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -191,7 +238,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   const handleUndo = () => {
     if (scoreHistory.length > 1 && !isSubmitting) {
       setIsSubmitting(true);
-      setError(null);
+      setError({...error, visible: false});
       
       try {
         // Remove the current score and go back to the previous one
@@ -200,23 +247,37 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         const previousScore = newHistory[newHistory.length - 1].score;
         
         // Update the match with the previous score
-        updateMatch.mutate({
-          id: match.id,
-          updates: {
-            score: previousScore
-          }
-        }, {
-          onSuccess: () => {
+        supabase
+          .from('matches')
+          .update({ score: previousScore })
+          .eq('id', match.id)
+          .then(({ error }) => {
+            if (error) {
+              throw error;
+            }
             setScoreHistory(newHistory);
-          },
-          onError: (err: any) => {
-            setError(err.message || 'Failed to undo last point');
-          }
-        });
+            setScore(previousScore);
+            scoreRef.current = previousScore;
+          })
+          .catch((err) => {
+            setError({
+              visible: true,
+              title: 'Undo Failed',
+              message: err.message || 'Failed to undo last point',
+              type: 'error'
+            });
+          })
+          .finally(() => {
+            setIsSubmitting(false);
+          });
       } catch (err: any) {
         console.error('Error undoing point:', err);
-        setError(err.message || 'Failed to undo last point');
-      } finally {
+        setError({
+          visible: true,
+          title: 'Undo Failed',
+          message: err.message || 'Failed to undo last point',
+          type: 'error'
+        });
         setIsSubmitting(false);
       }
     }
@@ -229,13 +290,22 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   const confirmMatchEnd = async () => {
     setIsSubmitting(true);
     try {
-      await updateMatch.mutateAsync({
-        id: match.id,
-        updates: {
+      // Determine the winner based on sets won
+      const winnerId = getMatchWinner();
+      
+      if (!winnerId) {
+        throw new Error('Cannot determine match winner');
+      }
+      
+      const { error } = await supabase
+        .from('matches')
+        .update({
           status: 'completed',
-          winner_id: getMatchWinner(),
-        },
-      });
+          winner_id: winnerId,
+        })
+        .eq('id', match.id);
+        
+      if (error) throw error;
 
       setSuccessMessage('Match completed successfully!');
       setTimeout(() => {
@@ -243,7 +313,12 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       }, 3000);
     } catch (err: any) {
       console.error('Error ending match:', err);
-      setError(err.message || 'Failed to end match');
+      setError({
+        visible: true,
+        title: 'Error Ending Match',
+        message: err.message || 'Failed to end match',
+        type: 'error'
+      });
     } finally {
       setIsSubmitting(false);
       setConfirmEndMatch(false);
@@ -273,7 +348,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     return ''; // No winner yet
   };
 
-  const getPointTypeLabel = (type: PointType): string => {
+  const getPointTypeLabel = (type: string): string => {
     switch (type) {
       case 'ace': return 'Ace';
       case 'winner': return 'Winner';
@@ -284,7 +359,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     }
   };
 
-  const getPointTypeColor = (type: PointType): string => {
+  const getPointTypeColor = (type: string): string => {
     switch (type) {
       case 'ace': return 'var(--accent-yellow)';
       case 'winner': return 'var(--success-green)';
@@ -299,7 +374,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     if (!score) return;
     
     setIsGeneratingInsight(true);
-    setError(null);
+    setError({...error, visible: false});
     
     try {
       const response = await apiClient.getUmpireInsight(match.id, score);
@@ -308,7 +383,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         throw new Error(response.error || 'Failed to get umpire insight');
       }
       
-      setUmpireInsight(response.data);
+      setUmpireInsight(response.data as UmpireInsight);
       setShowInsight(true);
       
       // Auto-hide insight after 10 seconds
@@ -317,10 +392,19 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       }, 10000);
     } catch (err: any) {
       console.error('Error getting umpire insight:', err);
-      setError('Oops! We couldn\'t fetch the AI umpire insight right now. This may be due to a temporary server issue or network problem. Please try again shortly. If this keeps happening, let us know through support.');
+      setError({
+        visible: true,
+        title: 'AI Insight Failed',
+        message: 'Oops! We couldn\'t fetch the AI umpire insight right now. This may be due to a temporary server issue or network problem. Please try again shortly. If this keeps happening, let us know through support.',
+        type: 'error'
+      });
     } finally {
       setIsGeneratingInsight(false);
     }
+  };
+
+  const dismissError = () => {
+    setError({...error, visible: false});
   };
 
   if (!score) {
@@ -352,11 +436,40 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         </div>
 
         {/* Error/Success Messages */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-4">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-              <span>{error}</span>
+        {error.visible && (
+          <div className={`bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-4 mb-6 ${
+            error.type === 'error' ? 'border-error-pink' : 
+            error.type === 'warning' ? 'border-warning-orange' : 'border-quantum-cyan'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                {error.type === 'error' && <AlertTriangle className="h-5 w-5 text-error-pink" />}
+                {error.type === 'warning' && <AlertTriangle className="h-5 w-5 text-warning-orange" />}
+                {error.type === 'info' && <Info className="h-5 w-5 text-quantum-cyan" />}
+              </div>
+              <div className="flex-1">
+                <h3 className={`text-lg font-medium mb-1 ${
+                  error.type === 'error' ? 'text-error-pink' : 
+                  error.type === 'warning' ? 'text-warning-orange' : 'text-quantum-cyan'
+                }`}>
+                  {error.title}
+                </h3>
+                <p className="text-text-standard mb-2">{error.message}</p>
+                {error.details && (
+                  <details className="mt-2">
+                    <summary className="text-sm text-text-subtle cursor-pointer">Technical details</summary>
+                    <p className="mt-1 text-sm text-text-subtle bg-bg-elevated p-2 rounded">{error.details}</p>
+                  </details>
+                )}
+                <div className="mt-3">
+                  <button 
+                    onClick={dismissError}
+                    className="text-sm font-medium px-3 py-1 rounded-md bg-bg-elevated hover:bg-hover-bg"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -489,7 +602,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         <div className="bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-6 mb-6">
           <h3 className="text-lg font-bold mb-4">Point Type</h3>
           <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
-            {(['point_won', 'ace', 'winner', 'double_fault', 'forced_error', 'unforced_error'] as PointType[]).map((type) => (
+            {(['point_won', 'ace', 'winner', 'double_fault', 'forced_error', 'unforced_error']).map((type) => (
               <button
                 key={type}
                 onClick={() => setPointType(type)}
