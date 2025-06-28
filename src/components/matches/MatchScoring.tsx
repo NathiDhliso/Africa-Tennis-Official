@@ -18,13 +18,16 @@ import {
   Info,
   Sparkles,
   Loader2,
-  X
+  X,
+  Video,
+  Camera
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/aws';
 import LoadingSpinner from '../LoadingSpinner';
 import ErrorDisplay from '../ErrorDisplay';
+import VideoTrackingPanel from '../video/VideoTrackingPanel';
 import type { Database } from '../../types/database';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
@@ -96,6 +99,8 @@ const MatchScoring: React.FC<{
   const [umpireInsight, setUmpireInsight] = useState<UmpireInsight | null>(null);
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
+  const [showVideoTracking, setShowVideoTracking] = useState(false);
+  const [savedVideos, setSavedVideos] = useState<string[]>([]);
 
   // Create a default score object
   const createDefaultScore = (serverId: string): MatchScore => {
@@ -168,6 +173,20 @@ const MatchScoring: React.FC<{
               timestamp: Date.now(),
               action: 'initial'
             }]);
+
+            // Fetch saved videos for this match
+            const { data: eventData } = await supabase
+              .from('match_events')
+              .select('metadata')
+              .eq('match_id', match.id)
+              .eq('event_type', 'video_recorded');
+
+            if (eventData && eventData.length > 0) {
+              const videos = eventData
+                .filter(event => event.metadata && event.metadata.video_url)
+                .map(event => event.metadata.video_url);
+              setSavedVideos(videos);
+            }
           }
         }
       } catch (err) {
@@ -204,7 +223,7 @@ const MatchScoring: React.FC<{
               try {
                 const newScore = typeof newMatch.score === 'string' 
                   ? JSON.parse(newMatch.score) 
-                  : newScore = newMatch.score as MatchScore;
+                  : newMatch.score as MatchScore;
                   
                 setScore(newScore);
                 scoreRef.current = newScore;
@@ -538,6 +557,13 @@ const MatchScoring: React.FC<{
     }
   };
 
+  const handleVideoSaved = (videoUrl: string) => {
+    setSavedVideos(prev => [...prev, videoUrl]);
+    setShowVideoTracking(false);
+    setSuccessMessage('Video saved successfully!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
   const dismissError = () => {
     setError({...error, visible: false});
   };
@@ -560,6 +586,16 @@ const MatchScoring: React.FC<{
           onDismiss={onBack}
         />
       </div>
+    );
+  }
+
+  if (showVideoTracking) {
+    return (
+      <VideoTrackingPanel 
+        matchId={match.id} 
+        onVideoSaved={handleVideoSaved}
+        onClose={() => setShowVideoTracking(false)}
+      />
     );
   }
 
@@ -621,6 +657,31 @@ const MatchScoring: React.FC<{
                 </div>
                 <p className="text-text-standard mt-1">{umpireInsight.insight}</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Saved Videos Section */}
+        {savedVideos.length > 0 && (
+          <div className="bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-4 mb-4">
+            <h3 className="text-lg font-medium mb-2 flex items-center gap-2">
+              <Video className="h-5 w-5 text-quantum-cyan" />
+              Match Videos
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {savedVideos.map((videoUrl, index) => (
+                <div key={index} className="saved-video-item">
+                  <video 
+                    src={videoUrl} 
+                    controls 
+                    className="w-full h-auto rounded-md"
+                    style={{ maxHeight: '150px' }}
+                  />
+                  <div className="text-xs text-text-subtle mt-1">
+                    Video {index + 1} - {new Date().toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -862,6 +923,16 @@ const MatchScoring: React.FC<{
           >
             <RotateCcw className="h-5 w-5 mr-2" />
             Undo Last Point
+          </button>
+          
+          <button
+            onClick={() => setShowVideoTracking(true)}
+            disabled={isSubmitting}
+            className="btn btn-secondary flex-1 relative"
+          >
+            <Camera className="h-5 w-5 mr-2" />
+            Video Tracking
+            <span className="absolute -top-1 -right-1 text-xs px-1.5 py-0.5 bg-warning-orange text-white rounded-full">NEW</span>
           </button>
           
           <button
