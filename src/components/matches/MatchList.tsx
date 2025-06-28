@@ -129,6 +129,7 @@ export const MatchList: React.FC = () => {
         onSuccess: () => {
           setShowScoreModal(false);
           setSelectedMatch(null);
+          refetch();
         }
       }
     );
@@ -368,3 +369,5 @@ export const MatchList: React.FC = () => {
     </div>
   );
 };
+
+export default MatchList;

@@ -75,7 +75,6 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         
       if (error) throw error;
       setAvailablePlayers(data || []);
-      // Don't set filtered players here - wait for search query
     } catch (error) {
       console.error('Error loading players:', error);
     }

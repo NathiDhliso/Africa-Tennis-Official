@@ -37,6 +37,7 @@ export const useMatches = (userId?: string) => {
     queryKey: ['matches', userId],
     queryFn: () => fetchMatches(userId),
     enabled: !!userId,
+    staleTime: 30000, // 30 seconds
   });
 
   useEffect(() => {
