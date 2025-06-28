@@ -23,6 +23,7 @@
     "lambdas/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "lambdas/**/__tests__/**"
   ]
 }

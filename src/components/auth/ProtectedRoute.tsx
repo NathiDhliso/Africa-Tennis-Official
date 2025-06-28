@@ -1,6 +1,6 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
+import { redirectToLogin } from '../../lib/redirect';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,6 +8,12 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading } = useAuthStore();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      redirectToLogin();
+    }
+  }, [loading, user]);
 
   if (loading) {
     return (
@@ -18,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return null; // Redirecting
   }
 
   return <>{children}</>;

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const handler = async (event: { queryStringParameters?: Record<string, string> }): Promise<{
+export const handler = async (event: { httpMethod?: string; queryStringParameters?: Record<string, string> }): Promise<{
   statusCode: number;
   headers: Record<string, string>;
   body: string;
