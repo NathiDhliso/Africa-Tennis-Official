@@ -70,15 +70,23 @@ class ApiClient {
         return this.request(endpoint, options, retries - 1);
       }
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}`)
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        // Handle non-JSON responses
+        const text = await response.text();
+        throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
       }
 
-      return data
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}: ${this.getStatusMessage(response.status)}`);
+      }
+
+      return data;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Network error'
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
       
       // Retry on network errors
       if (error instanceof TypeError && retries > 0) {
@@ -87,11 +95,69 @@ class ApiClient {
         return this.request(endpoint, options, retries - 1);
       }
 
-      console.error(`API request failed: ${endpoint}`, error)
+      console.error(`API request failed: ${endpoint}`, error);
+      
+      // Return user-friendly error message
       return {
         success: false,
-        error: errorMessage
-      }
+        error: this.getUserFriendlyErrorMessage(errorMessage, endpoint)
+      };
+    }
+  }
+
+  // Helper method to get user-friendly error messages
+  private getUserFriendlyErrorMessage(error: string, endpoint: string): string {
+    // Check for specific error patterns
+    if (error.includes('Failed to fetch') || error.includes('Network error')) {
+      return "⚠️ Connection lost. Please check your internet connection and try again.";
+    }
+    
+    if (error.includes('non-JSON response')) {
+      return "✨ Our AI service is currently taking a break. Please try again in a moment.";
+    }
+    
+    if (error.includes('404')) {
+      return "🔍 We couldn't find what you're looking for. The service might be temporarily unavailable.";
+    }
+    
+    if (error.includes('403')) {
+      return "🔒 Access denied. You might not have permission to use this feature.";
+    }
+    
+    if (error.includes('401')) {
+      return "🔑 Your session has expired. Please sign in again to continue.";
+    }
+    
+    if (error.includes('500')) {
+      return "⚡ Our servers are experiencing a technical glitch. Our team has been notified.";
+    }
+    
+    if (error.includes('503')) {
+      return "🛠️ Service temporarily unavailable. We're working on improvements and will be back shortly.";
+    }
+    
+    if (endpoint.includes('generate-')) {
+      return "✨ Our AI couldn't generate your request at this moment. Please try again later.";
+    }
+    
+    // Default error message
+    return "Something unexpected happened. Please try again or contact support if the issue persists.";
+  }
+  
+  // Helper method to get status message
+  private getStatusMessage(status: number): string {
+    switch (status) {
+      case 400: return "Bad Request";
+      case 401: return "Unauthorized";
+      case 403: return "Forbidden";
+      case 404: return "Not Found";
+      case 408: return "Request Timeout";
+      case 429: return "Too Many Requests";
+      case 500: return "Internal Server Error";
+      case 502: return "Bad Gateway";
+      case 503: return "Service Unavailable";
+      case 504: return "Gateway Timeout";
+      default: return "Unknown Error";
     }
   }
 
