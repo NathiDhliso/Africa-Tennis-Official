@@ -149,6 +149,8 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /players/{playerId}/generate-style
             Method: post
+            Auth:
+              Authorizer: 'NONE'
       Policies:
         - Statement:
           - Effect: Allow
