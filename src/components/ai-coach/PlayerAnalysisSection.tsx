@@ -20,19 +20,19 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
 
   const handleGenerateAnalysis = async () => {
     if (!selectedPlayer) return;
-
+    
     setIsGeneratingAnalysis(true);
     setError(null);
     setSuccess(null);
-
+    
     try {
       console.log(`Generating player style analysis for ${selectedPlayer.username} (${selectedPlayer.user_id})`);
       const response = await apiClient.generatePlayerStyle(selectedPlayer.user_id);
-
+      
       if (!response.success) {
         throw new Error(response.error || 'Failed to generate player style analysis');
       }
-
+      
       const analysis = (response.data as { playerStyleAnalysis: string }).playerStyleAnalysis;
       
       if (onAnalysisGenerated) {
@@ -126,7 +126,7 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
         
         <button
           onClick={handleGenerateAnalysis}
-          className="ai-coach-cta-btn"
+          className="ai-coach-cta-btn relative"
           disabled={isGeneratingAnalysis}
         >
           {isGeneratingAnalysis ? (
@@ -140,6 +140,7 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
               Start AI Analysis
             </>
           )}
+          <span className="absolute -top-1 -right-1 text-xs px-1.5 py-0.5 bg-warning-orange text-white rounded-full">BETA</span>
         </button>
       </div>
     );
