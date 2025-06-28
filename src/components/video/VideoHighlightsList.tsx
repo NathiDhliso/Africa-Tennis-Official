@@ -1,0 +1,280 @@
+import React, { useState, useEffect } from 'react';
+import { Play, Trash, Download, Info, X } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+
+interface VideoHighlight {
+  id: string;
+  match_id: string;
+  timestamp: string;
+  type: string;
+  description: string;
+  video_url: string;
+  created_at: string;
+}
+
+interface VideoHighlightsListProps {
+  matchId?: string;
+  onPlayHighlight?: (highlight: VideoHighlight) => void;
+}
+
+const VideoHighlightsList: React.FC<VideoHighlightsListProps> = ({ 
+  matchId,
+  onPlayHighlight 
+}) => {
+  const [highlights, setHighlights] = useState<VideoHighlight[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedHighlight, setSelectedHighlight] = useState<VideoHighlight | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    const fetchHighlights = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        let query = supabase
+          .from('match_highlights')
+          .select('*')
+          .order('timestamp', { ascending: false });
+          
+        if (matchId) {
+          query = query.eq('match_id', matchId);
+        }
+        
+        const { data, error: fetchError } = await query;
+        
+        if (fetchError) throw fetchError;
+        
+        setHighlights(data || []);
+      } catch (err) {
+        console.error('Error fetching highlights:', err);
+        setError('Failed to load video highlights');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchHighlights();
+    
+    // Set up real-time subscription for highlights
+    const highlightsSubscription = supabase
+      .channel('match-highlights')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'match_highlights' },
+        fetchHighlights
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(highlightsSubscription);
+    };
+  }, [matchId]);
+
+  const handlePlayHighlight = (highlight: VideoHighlight) => {
+    setSelectedHighlight(highlight);
+    if (onPlayHighlight) {
+      onPlayHighlight(highlight);
+    }
+  };
+
+  const handleDownloadHighlight = async (highlight: VideoHighlight) => {
+    try {
+      // Get the video URL
+      const { data, error } = await supabase.storage
+        .from('match-highlights')
+        .createSignedUrl(highlight.video_url, 60); // 60 seconds expiry
+        
+      if (error) throw error;
+      
+      if (data?.signedUrl) {
+        // Create a temporary anchor element to trigger download
+        const a = document.createElement('a');
+        a.href = data.signedUrl;
+        a.download = `tennis-highlight-${highlight.id}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (err) {
+      console.error('Error downloading highlight:', err);
+      setError('Failed to download highlight video');
+    }
+  };
+
+  const handleDeleteHighlight = async (highlight: VideoHighlight) => {
+    setSelectedHighlight(highlight);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedHighlight) return;
+    
+    try {
+      // Delete the video file from storage
+      const { error: storageError } = await supabase.storage
+        .from('match-highlights')
+        .remove([selectedHighlight.video_url]);
+        
+      if (storageError) throw storageError;
+      
+      // Delete the highlight record from the database
+      const { error: dbError } = await supabase
+        .from('match_highlights')
+        .delete()
+        .eq('id', selectedHighlight.id);
+        
+      if (dbError) throw dbError;
+      
+      // Update local state
+      setHighlights(highlights.filter(h => h.id !== selectedHighlight.id));
+      setShowDeleteConfirm(false);
+      setSelectedHighlight(null);
+    } catch (err) {
+      console.error('Error deleting highlight:', err);
+      setError('Failed to delete highlight');
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setSelectedHighlight(null);
+  };
+
+  const getHighlightTypeIcon = (type: string) => {
+    switch (type) {
+      case 'rally':
+        return <Activity className="h-5 w-5" />;
+      case 'ace':
+        return <Zap className="h-5 w-5" />;
+      case 'winner':
+        return <Star className="h-5 w-5" />;
+      case 'break_point':
+        return <Target className="h-5 w-5" />;
+      case 'comeback':
+        return <TrendingUp className="h-5 w-5" />;
+      default:
+        return <Video className="h-5 w-5" />;
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="video-highlights-loading">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p>Loading highlights...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="video-highlights-error">
+        <AlertCircle className="h-8 w-8" />
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="video-highlights-list">
+      <h3 className="video-highlights-title">
+        <Play className="h-5 w-5 mr-2" />
+        Match Highlights
+      </h3>
+      
+      {highlights.length === 0 ? (
+        <div className="video-no-highlights">
+          <Video className="h-12 w-12" />
+          <p>No highlights recorded yet</p>
+          <p className="text-sm">Record match highlights to see them here</p>
+        </div>
+      ) : (
+        <div className="video-highlights-grid">
+          {highlights.map((highlight) => (
+            <div key={highlight.id} className="video-highlight-card">
+              <div className="video-highlight-header">
+                <div className="video-highlight-type">
+                  {getHighlightTypeIcon(highlight.type)}
+                  <span>{highlight.type.replace('_', ' ')}</span>
+                </div>
+                <div className="video-highlight-timestamp">
+                  {formatTimestamp(highlight.timestamp)}
+                </div>
+              </div>
+              
+              <div className="video-highlight-description">
+                {highlight.description}
+              </div>
+              
+              <div className="video-highlight-actions">
+                <button
+                  onClick={() => handlePlayHighlight(highlight)}
+                  className="video-highlight-action video-highlight-play"
+                >
+                  <Play className="h-4 w-4" />
+                  Play
+                </button>
+                
+                <button
+                  onClick={() => handleDownloadHighlight(highlight)}
+                  className="video-highlight-action video-highlight-download"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </button>
+                
+                <button
+                  onClick={() => handleDeleteHighlight(highlight)}
+                  className="video-highlight-action video-highlight-delete"
+                >
+                  <Trash className="h-4 w-4" />
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedHighlight && (
+        <div className="video-delete-modal">
+          <div className="video-delete-modal-content">
+            <h4 className="video-delete-modal-title">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              Delete Highlight
+            </h4>
+            
+            <p className="video-delete-modal-message">
+              Are you sure you want to delete this highlight? This action cannot be undone.
+            </p>
+            
+            <div className="video-delete-modal-actions">
+              <button
+                onClick={cancelDelete}
+                className="video-delete-modal-cancel"
+              >
+                Cancel
+              </button>
+              
+              <button
+                onClick={confirmDelete}
+                className="video-delete-modal-confirm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default VideoHighlightsList;

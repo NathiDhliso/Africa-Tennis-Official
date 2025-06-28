@@ -19,6 +19,7 @@ const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const RankingsPage = React.lazy(() => import('./pages/RankingsPage'));
 const UmpirePage = React.lazy(() => import('./pages/UmpirePage'));
 const AICoachPage = React.lazy(() => import('./pages/AICoachPage'));
+const VideoAnalysisPage = React.lazy(() => import('./pages/VideoAnalysisPage'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const SignUpPage = React.lazy(() => import('./pages/SignUpPage'));
 const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
@@ -42,6 +43,7 @@ import './styles/pages/matches.css';
 import './styles/pages/profile.css';
 import './styles/pages/umpire.css';
 import './styles/pages/ai-coach.css';
+import './styles/pages/video-analysis.css';
 
 // Import component-specific styles
 import './styles/components/multi-select-calendar.css';
@@ -70,6 +72,8 @@ const AppRoutes = ({ user }: { user: unknown }) => {
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/umpire" element={<UmpirePage />} />
               <Route path="/ai-coach" element={<AICoachPage />} />
+              <Route path="/video-analysis" element={<VideoAnalysisPage />} />
+              <Route path="/video-analysis/:matchId" element={<VideoAnalysisPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

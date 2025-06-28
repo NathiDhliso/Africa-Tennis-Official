@@ -11,7 +11,8 @@ import {
   Gavel,
   Swords,
   LogOut,
-  Sparkles
+  Sparkles,
+  Video
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuthStore } from '../../stores/authStore';
@@ -32,6 +33,7 @@ const Sidebar: React.FC = () => {
     { id: 'umpire', label: 'Live Scoring', icon: Gavel, path: '/umpire' },
     { id: 'rankings', label: 'Ratings & Rankings', icon: BarChart3, path: '/rankings' },
     { id: 'ai-coach', label: 'AI Coach', icon: Sparkles, path: '/ai-coach' },
+    { id: 'video-analysis', label: 'Video Analysis', icon: Video, path: '/video-analysis' },
   ];
 
   const handleSignOut = async () => {
