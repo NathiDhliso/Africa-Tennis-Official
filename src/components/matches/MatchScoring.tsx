@@ -204,7 +204,7 @@ const MatchScoring: React.FC<{
               try {
                 const newScore = typeof newMatch.score === 'string' 
                   ? JSON.parse(newMatch.score) 
-                  : newMatch.score as MatchScore;
+                  : newScore = newMatch.score as MatchScore;
                   
                 setScore(newScore);
                 scoreRef.current = newScore;
@@ -332,7 +332,10 @@ const MatchScoring: React.FC<{
       // Update the database through Supabase
       const { error: updateError } = await supabase
         .from('matches')
-        .update({ score: updatedScore })
+        .update({ 
+          score: updatedScore,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', match.id);
         
       if (updateError) throw updateError;
@@ -376,7 +379,10 @@ const MatchScoring: React.FC<{
         // Update the match with the previous score
         const { error: updateError } = await supabase
           .from('matches')
-          .update({ score: previousScore })
+          .update({ 
+            score: previousScore,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', match.id);
           
         if (updateError) throw updateError;
@@ -418,6 +424,7 @@ const MatchScoring: React.FC<{
         .update({
           status: 'completed',
           winner_id: winnerId,
+          updated_at: new Date().toISOString()
         })
         .eq('id', match.id);
         
@@ -715,24 +722,96 @@ const MatchScoring: React.FC<{
         <div className="bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-6 mb-6">
           <h3 className="text-lg font-bold mb-4">Point Type</h3>
           <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
-            {(['point_won', 'ace', 'winner', 'double_fault', 'forced_error', 'unforced_error']).map((type) => (
-              <button
-                key={type}
-                onClick={() => setPointType(type)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  pointType === type 
-                    ? 'bg-opacity-20 border-2' 
-                    : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
-                }`}
-                style={{
-                  backgroundColor: pointType === type ? `${getPointTypeColor(type)}20` : undefined,
-                  borderColor: pointType === type ? getPointTypeColor(type) : undefined,
-                  color: pointType === type ? getPointTypeColor(type) : 'var(--text-standard)'
-                }}
-              >
-                {getPointTypeLabel(type)}
-              </button>
-            ))}
+            <button
+              onClick={() => setPointType('point_won')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                pointType === 'point_won' 
+                  ? 'bg-opacity-20 border-2' 
+                  : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
+              }`}
+              style={{
+                backgroundColor: pointType === 'point_won' ? `${getPointTypeColor('point_won')}20` : undefined,
+                borderColor: pointType === 'point_won' ? getPointTypeColor('point_won') : undefined,
+                color: pointType === 'point_won' ? getPointTypeColor('point_won') : 'var(--text-standard)'
+              }}
+            >
+              Point
+            </button>
+            <button
+              onClick={() => setPointType('ace')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                pointType === 'ace' 
+                  ? 'bg-opacity-20 border-2' 
+                  : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
+              }`}
+              style={{
+                backgroundColor: pointType === 'ace' ? `${getPointTypeColor('ace')}20` : undefined,
+                borderColor: pointType === 'ace' ? getPointTypeColor('ace') : undefined,
+                color: pointType === 'ace' ? getPointTypeColor('ace') : 'var(--text-standard)'
+              }}
+            >
+              Ace
+            </button>
+            <button
+              onClick={() => setPointType('winner')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                pointType === 'winner' 
+                  ? 'bg-opacity-20 border-2' 
+                  : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
+              }`}
+              style={{
+                backgroundColor: pointType === 'winner' ? `${getPointTypeColor('winner')}20` : undefined,
+                borderColor: pointType === 'winner' ? getPointTypeColor('winner') : undefined,
+                color: pointType === 'winner' ? getPointTypeColor('winner') : 'var(--text-standard)'
+              }}
+            >
+              Winner
+            </button>
+            <button
+              onClick={() => setPointType('double_fault')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                pointType === 'double_fault' 
+                  ? 'bg-opacity-20 border-2' 
+                  : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
+              }`}
+              style={{
+                backgroundColor: pointType === 'double_fault' ? `${getPointTypeColor('double_fault')}20` : undefined,
+                borderColor: pointType === 'double_fault' ? getPointTypeColor('double_fault') : undefined,
+                color: pointType === 'double_fault' ? getPointTypeColor('double_fault') : 'var(--text-standard)'
+              }}
+            >
+              Double Fault
+            </button>
+            <button
+              onClick={() => setPointType('forced_error')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                pointType === 'forced_error' 
+                  ? 'bg-opacity-20 border-2' 
+                  : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
+              }`}
+              style={{
+                backgroundColor: pointType === 'forced_error' ? `${getPointTypeColor('forced_error')}20` : undefined,
+                borderColor: pointType === 'forced_error' ? getPointTypeColor('forced_error') : undefined,
+                color: pointType === 'forced_error' ? getPointTypeColor('forced_error') : 'var(--text-standard)'
+              }}
+            >
+              Forced Error
+            </button>
+            <button
+              onClick={() => setPointType('unforced_error')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                pointType === 'unforced_error' 
+                  ? 'bg-opacity-20 border-2' 
+                  : 'bg-bg-elevated border border-border-subtle hover:bg-hover-bg'
+              }`}
+              style={{
+                backgroundColor: pointType === 'unforced_error' ? `${getPointTypeColor('unforced_error')}20` : undefined,
+                borderColor: pointType === 'unforced_error' ? getPointTypeColor('unforced_error') : undefined,
+                color: pointType === 'unforced_error' ? getPointTypeColor('unforced_error') : 'var(--text-standard)'
+              }}
+            >
+              Unforced Error
+            </button>
           </div>
         </div>
 
