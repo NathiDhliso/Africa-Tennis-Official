@@ -103,51 +103,72 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   const [showInsight, setShowInsight] = useState(false);
 
   useEffect(() => {
-    const initializeScore = () => {
-      if (match && match.score) {
-        try {
-          const parsedScore = typeof match.score === 'string' ? JSON.parse(match.score) : match.score;
-          setScore(parsedScore);
-          scoreRef.current = parsedScore;
+    const initializeScore = async () => {
+      setIsLoading(true);
+      try {
+        if (match && match.id) {
+          // Fetch the latest match data to ensure we have the most up-to-date score
+          const { data: matchData, error: matchError } = await supabase
+            .from('matches')
+            .select(`
+              *,
+              player1:profiles!matches_player1_id_fkey(username, elo_rating),
+              player2:profiles!matches_player2_id_fkey(username, elo_rating)
+            `)
+            .eq('id', match.id)
+            .single();
+            
+          if (matchError) throw matchError;
           
-          // Initialize score history with current score
-          setScoreHistory([{
-            score: parsedScore,
-            timestamp: Date.now(),
-            action: 'initial'
-          }]);
-        } catch (err) {
-          console.error('Error parsing score:', err);
-          setError({
-            visible: true,
-            title: 'Error Loading Score',
-            message: 'There was a problem loading the match score.',
-            type: 'error'
-          });
+          if (matchData) {
+            // Set player profiles
+            setPlayer1Profile(matchData.player1);
+            setPlayer2Profile(matchData.player2);
+            
+            // Initialize score
+            let initialScore: MatchScore;
+            
+            if (matchData.score) {
+              try {
+                initialScore = typeof matchData.score === 'string' 
+                  ? JSON.parse(matchData.score) 
+                  : matchData.score as MatchScore;
+              } catch (err) {
+                console.error('Error parsing score:', err);
+                initialScore = createDefaultScore(matchData.player1_id);
+              }
+            } else {
+              initialScore = createDefaultScore(matchData.player1_id);
+            }
+            
+            setScore(initialScore);
+            scoreRef.current = initialScore;
+            
+            // Initialize score history
+            setScoreHistory([{
+              score: initialScore,
+              timestamp: Date.now(),
+              action: 'initial'
+            }]);
+          }
         }
-      } else {
-        const defaultScore = {
-          sets: [{
-            player1_games: 0,
-            player2_games: 0,
-            games: []
-          }],
-          current_game: { player1: '0', player2: '0' },
-          server_id: match.player1_id,
-          is_tiebreak: false,
-        };
-        setScore(defaultScore);
-        scoreRef.current = defaultScore;
-        setScoreHistory([{
-          score: defaultScore,
-          timestamp: Date.now(),
-          action: 'initial'
-        }]);
+      } catch (err) {
+        console.error('Error initializing score:', err);
+        setError({
+          visible: true,
+          title: 'Error Loading Match',
+          message: 'We couldn\'t load the match data. Please try again.',
+          details: err instanceof Error ? err.message : 'Unknown error',
+          type: 'error'
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     initializeScore();
 
+    // Set up real-time subscription for match updates
     const subscription = supabase
       .channel(`match-${match.id}`)
       .on(
@@ -185,6 +206,20 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     };
   }, [match.id, match.player1_id, onBack]);
 
+  // Create a default score object
+  const createDefaultScore = (serverId: string): MatchScore => {
+    return {
+      sets: [{
+        player1_games: 0,
+        player2_games: 0,
+        games: []
+      }],
+      current_game: { player1: '0', player2: '0' },
+      server_id: serverId,
+      is_tiebreak: false,
+    };
+  };
+
   useEffect(() => {
     if (score) {
       setPointType('point_won');
@@ -193,7 +228,7 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   }, [score]);
 
   const handleAwardPoint = async (playerId: string) => {
-    if (isSubmitting) return;
+    if (isSubmitting || !match.id) return;
 
     setIsSubmitting(true);
     setError({...error, visible: false});
@@ -228,7 +263,8 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       setError({
         visible: true,
         title: 'Error Updating Score',
-        message: err.message || 'Failed to award point',
+        message: 'We couldn\'t update the score. Please try again.',
+        details: err.message || 'Unknown error',
         type: 'error'
       });
     } finally {
@@ -412,10 +448,23 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     setError({...error, visible: false});
   };
 
-  if (!score) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="large" text="Loading match data..." />
+      </div>
+    );
+  }
+
+  if (!score) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <ErrorDisplay
+          type="error"
+          title="Match Data Error"
+          message="We couldn't load the match scoring data. Please try going back and entering the match again."
+          onDismiss={onBack}
+        />
       </div>
     );
   }
