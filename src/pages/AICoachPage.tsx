@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/aws';
 import type { Database } from '../types/database';
+import PlayerAnalysisSection from '../components/ai-coach/PlayerAnalysisSection';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -13,7 +14,6 @@ const AICoachPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [playerMatches, setPlayerMatches] = useState<any[]>([]);
@@ -87,46 +87,6 @@ const AICoachPage: React.FC = () => {
     setSearchQuery('');
     setSearchResults([]);
     fetchPlayerMatches(player.user_id);
-  };
-
-  const handleGenerateAnalysis = async () => {
-    if (!selectedPlayer) return;
-
-    setIsGeneratingAnalysis(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await apiClient.generatePlayerStyle(selectedPlayer.user_id);
-
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to generate player style analysis');
-      }
-
-      // Update the selected player with the new analysis
-      setSelectedPlayer({
-        ...selectedPlayer,
-        player_style_analysis: (response.data as { playerStyleAnalysis: string }).playerStyleAnalysis
-      });
-
-      setSuccess('Player style analysis generated successfully!');
-    } catch (err) {
-      console.error('Error generating player style analysis:', err);
-      
-      // Provide clear error messages for different scenarios
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
-        setError('AI Coach service is currently unavailable. Please ensure AWS Lambda functions are deployed and properly configured.');
-      } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
-        setError('Sorry, we couldn\'t generate your AI analysis at this time. Our AI Coach service may be temporarily unavailable or experiencing high demand. Please try again in a few minutes. If the problem persists, contact support or check your internet connection.');
-      } else if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
-        setError('AI Coach endpoint not found. Please verify the API configuration and deployment.');
-      } else {
-        setError('Sorry, we couldn\'t generate your AI analysis at this time. Our AI Coach service may be temporarily unavailable or experiencing high demand. Please try again in a few minutes. If the problem persists, contact support or check your internet connection.');
-      }
-    } finally {
-      setIsGeneratingAnalysis(false);
-    }
   };
 
   const calculateWinRate = (matchesPlayed: number, matchesWon: number) => {
@@ -277,24 +237,6 @@ const AICoachPage: React.FC = () => {
                       <div className="ai-coach-stat-label">Win Rate</div>
                     </div>
                   </div>
-
-                  <button
-                    onClick={handleGenerateAnalysis}
-                    disabled={isGeneratingAnalysis}
-                    className="ai-coach-analyze-btn"
-                  >
-                    {isGeneratingAnalysis ? (
-                      <>
-                        <Loader2 className="animate-spin" size={18} />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={18} />
-                        {selectedPlayer.player_style_analysis ? 'Regenerate Analysis' : 'Generate AI Analysis'}
-                      </>
-                    )}
-                  </button>
                 </div>
               )}
             </div>
@@ -371,77 +313,17 @@ const AICoachPage: React.FC = () => {
 
               {/* Analysis Content */}
               <div className="ai-coach-analysis-section">
-              {isGeneratingAnalysis ? (
-                  <div className="ai-coach-loading-state">
-                    <div className="ai-coach-loading-animation">
-                      <Brain size={48} className="ai-coach-loading-icon" />
-                      <div className="ai-coach-loading-pulse"></div>
-                    </div>
-                    <h3>Generating Analysis</h3>
-                    <p>Our AI coach is analyzing playing patterns, strengths, and areas for improvement...</p>
-                    <div className="ai-coach-loading-steps">
-                      <div className="ai-coach-loading-step active">
-                        <Zap size={16} />
-                        <span>Processing match data</span>
-                      </div>
-                      <div className="ai-coach-loading-step active">
-                        <Target size={16} />
-                        <span>Analyzing playing style</span>
-                      </div>
-                      <div className="ai-coach-loading-step">
-                        <TrendingUp size={16} />
-                        <span>Generating insights</span>
-                      </div>
-                    </div>
-                </div>
-              ) : selectedPlayer?.player_style_analysis ? (
-                  <div className="ai-coach-analysis-content">
-                    <div className="ai-coach-analysis-header">
-                      <div className="ai-coach-analysis-badge">
-                        <Sparkles size={16} />
-                        AI Generated Analysis
-                      </div>
-                    </div>
-                    <div className="ai-coach-analysis-text">
-                      {selectedPlayer.player_style_analysis}
-                    </div>
-                    <div className="ai-coach-analysis-footer">
-                      <div className="ai-coach-analysis-meta">
-                        <Brain size={14} />
-                        <span>Powered by AI Tennis Coach</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : selectedPlayer ? (
-                  <div className="ai-coach-empty-state">
-                    <div className="ai-coach-empty-icon">
-                      <Sparkles size={64} />
-                </div>
-                    <h3>Ready to Analyze</h3>
-                    <p>
-                      Generate an AI-powered analysis of {selectedPlayer.username}'s playing style, 
-                      strengths, and areas for improvement based on match history and performance data.
-                  </p>
-                  <button
-                    onClick={handleGenerateAnalysis}
-                      className="ai-coach-cta-btn"
-                  >
-                      <Brain size={18} />
-                      Start AI Analysis
-                  </button>
-                </div>
-              ) : (
-                  <div className="ai-coach-empty-state">
-                    <div className="ai-coach-empty-icon">
-                      <User size={64} />
-                    </div>
-                    <h3>Select a Player</h3>
-                    <p>
-                      Choose a player from the search results or use your own profile to begin 
-                      generating professional AI-powered tennis insights.
-                  </p>
-                </div>
-              )}
+                <PlayerAnalysisSection 
+                  selectedPlayer={selectedPlayer}
+                  onAnalysisGenerated={(analysis) => {
+                    if (selectedPlayer) {
+                      setSelectedPlayer({
+                        ...selectedPlayer,
+                        player_style_analysis: analysis
+                      });
+                    }
+                  }}
+                />
               </div>
 
               {/* AI Coach Information */}
