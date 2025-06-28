@@ -102,6 +102,20 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
 
+  // Create a default score object
+  const createDefaultScore = (serverId: string): MatchScore => {
+    return {
+      sets: [{
+        player1_games: 0,
+        player2_games: 0,
+        games: []
+      }],
+      current_game: { player1: '0', player2: '0' },
+      server_id: serverId,
+      is_tiebreak: false,
+    };
+  };
+
   useEffect(() => {
     const initializeScore = async () => {
       setIsLoading(true);
@@ -130,9 +144,18 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
             
             if (matchData.score) {
               try {
-                initialScore = typeof matchData.score === 'string' 
-                  ? JSON.parse(matchData.score) 
-                  : matchData.score as MatchScore;
+                // Handle different score formats
+                if (typeof matchData.score === 'string') {
+                  initialScore = JSON.parse(matchData.score);
+                } else {
+                  initialScore = matchData.score as MatchScore;
+                }
+                
+                // Validate the score structure
+                if (!initialScore.current_game || !initialScore.sets) {
+                  console.warn('Invalid score structure, creating default score');
+                  initialScore = createDefaultScore(matchData.player1_id);
+                }
               } catch (err) {
                 console.error('Error parsing score:', err);
                 initialScore = createDefaultScore(matchData.player1_id);
@@ -181,20 +204,27 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
         },
         (payload) => {
           if (payload.new && payload.new.score) {
-            const newScore = payload.new.score as MatchScore;
-            setScore(newScore);
-            scoreRef.current = newScore;
-            
-            // Add to score history
-            setScoreHistory(prev => [...prev, {
-              score: newScore,
-              timestamp: Date.now(),
-              action: 'update'
-            }]);
+            try {
+              const newScore = typeof payload.new.score === 'string' 
+                ? JSON.parse(payload.new.score) 
+                : payload.new.score as MatchScore;
+                
+              setScore(newScore);
+              scoreRef.current = newScore;
+              
+              // Add to score history
+              setScoreHistory(prev => [...prev, {
+                score: newScore,
+                timestamp: Date.now(),
+                action: 'update'
+              }]);
 
-            if (payload.new.status === 'completed') {
-              setSuccessMessage('Match completed!');
-              setTimeout(() => onBack(), 3000);
+              if (payload.new.status === 'completed') {
+                setSuccessMessage('Match completed!');
+                setTimeout(() => onBack(), 3000);
+              }
+            } catch (err) {
+              console.error('Error processing score update:', err);
             }
           }
         }
@@ -202,23 +232,9 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(subscription);
     };
   }, [match.id, match.player1_id, onBack]);
-
-  // Create a default score object
-  const createDefaultScore = (serverId: string): MatchScore => {
-    return {
-      sets: [{
-        player1_games: 0,
-        player2_games: 0,
-        games: []
-      }],
-      current_game: { player1: '0', player2: '0' },
-      server_id: serverId,
-      is_tiebreak: false,
-    };
-  };
 
   useEffect(() => {
     if (score) {
@@ -228,12 +244,13 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
   }, [score]);
 
   const handleAwardPoint = async (playerId: string) => {
-    if (isSubmitting || !match.id) return;
+    if (isSubmitting || !match.id || !score) return;
 
     setIsSubmitting(true);
     setError({...error, visible: false});
 
     try {
+      // First try the API Gateway endpoint
       const response = await apiClient.updateMatchScore(match.id, {
         winningPlayerId: playerId,
         pointType: pointType,
@@ -245,28 +262,67 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
       
       // Set the updated score
       if (response.data) {
-        setScore(response.data as MatchScore);
-        scoreRef.current = response.data as MatchScore;
+        const updatedScore = typeof response.data === 'string'
+          ? JSON.parse(response.data)
+          : response.data as MatchScore;
+          
+        setScore(updatedScore);
+        scoreRef.current = updatedScore;
         
         // Add to score history
         setScoreHistory(prev => [...prev, {
-          score: response.data as MatchScore,
+          score: updatedScore,
           timestamp: Date.now(),
           action: 'point'
         }]);
       }
       
+      // Visual feedback for the user
       setLastPointPlayerId(playerId);
       setTimeout(() => setLastPointPlayerId(null), 2000);
-    } catch (err: any) {
-      console.error('Error awarding point:', err);
-      setError({
-        visible: true,
-        title: 'Error Updating Score',
-        message: 'We couldn\'t update the score. Please try again.',
-        details: err.message || 'Unknown error',
-        type: 'error'
-      });
+      
+    } catch (apiError) {
+      console.error('API error, falling back to direct Supabase call:', apiError);
+      
+      try {
+        // Fallback to direct Supabase RPC call
+        const { data, error: supabaseError } = await supabase.rpc('calculate_tennis_score', {
+          match_id: match.id,
+          winning_player_id: playerId,
+          point_type: pointType || 'point_won'
+        });
+        
+        if (supabaseError) throw supabaseError;
+        
+        if (data) {
+          const updatedScore = typeof data === 'string'
+            ? JSON.parse(data)
+            : data as MatchScore;
+            
+          setScore(updatedScore);
+          scoreRef.current = updatedScore;
+          
+          // Add to score history
+          setScoreHistory(prev => [...prev, {
+            score: updatedScore,
+            timestamp: Date.now(),
+            action: 'point'
+          }]);
+          
+          // Visual feedback for the user
+          setLastPointPlayerId(playerId);
+          setTimeout(() => setLastPointPlayerId(null), 2000);
+        }
+      } catch (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        setError({
+          visible: true,
+          title: 'Scoring System Error',
+          message: 'We couldn\'t update the score. The scoring system is currently unavailable.',
+          details: supabaseError instanceof Error ? supabaseError.message : 'Unknown error',
+          type: 'error'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -385,7 +441,17 @@ const MatchScoring: React.FC<MatchScoringProps> = ({
     if (player1SetsWon >= 2) return match.player1_id;
     if (player2SetsWon >= 2) return match.player2_id;
 
-    return ''; // No winner yet
+    // If no clear winner yet, return the player with more sets
+    if (player1SetsWon > player2SetsWon) return match.player1_id;
+    if (player2SetsWon > player1SetsWon) return match.player2_id;
+
+    // If still tied, return the player with more games in the current set
+    const currentSet = score.sets[score.sets.length - 1];
+    if (currentSet.player1_games > currentSet.player2_games) return match.player1_id;
+    if (currentSet.player2_games > currentSet.player1_games) return match.player2_id;
+
+    // If everything is tied, default to player1
+    return match.player1_id;
   };
 
   const getPointTypeLabel = (type: string): string => {
