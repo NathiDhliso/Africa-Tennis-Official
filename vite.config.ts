@@ -5,8 +5,6 @@ import viteCompression from 'vite-plugin-compression'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Environment variables are loaded automatically by Vite
-  
   return {
     plugins: [
       react(),
@@ -73,14 +71,15 @@ export default defineConfig(({ mode }) => {
         'react-router-dom',
         '@supabase/supabase-js',
         'zustand',
-        '@tanstack/react-query'
-      ],
-      exclude: [
+        '@tanstack/react-query',
+        // CORRECTED: Move TensorFlow packages here
         '@tensorflow/tfjs', 
         '@tensorflow/tfjs-backend-webgl',
         '@tensorflow-models/pose-detection',
         '@tensorflow-models/coco-ssd'
-      ]
+      ],
+      // CORRECTED: Remove the exclude array or leave it empty
+      exclude: [] 
     }
   }
 })
