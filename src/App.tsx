@@ -23,15 +23,6 @@ const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
-// Import core styles only
-import './styles/base.css';
-import './styles/dark-mode.css';
-import './styles/light-mode.css';
-import './styles/animations.css';
-import './styles/shared.css';
-import './styles/sidebar.css';
-import './styles/rankings.css';
-
 // Initialize Sentry
 initSentry();
 
