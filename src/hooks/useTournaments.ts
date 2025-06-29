@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useCallback } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
 // Optimized fetch function with caching
