@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, MapPin, Trophy, Users, Clock, Target, ChevronRight
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
 import { useAuthStore } from '../../stores/authStore'
-import { apiClient } from '../../lib/aws'
+import apiClient from '../../lib/aws'
 import ErrorDisplay from '../ErrorDisplay'
 import type { Database } from '../../types/database'
 

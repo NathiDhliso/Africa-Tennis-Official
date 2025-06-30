@@ -18,7 +18,7 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
     registrationDeadline: null as Date | null,
     startDate: null as Date | null,
     endDate: null as Date | null,
-    format: 'single_elimination' as const,
+    format: 'single_elimination' as string,
     location: '',
     maxParticipants: 16,
     umpireId: '',
@@ -29,7 +29,11 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
   const [showAutoGenerateInfo, setShowAutoGenerateInfo] = useState(false);
 
   // Get available umpires (all users for now)
-  const [availableUmpires, setAvailableUmpires] = useState<any[]>([]);
+  const [availableUmpires, setAvailableUmpires] = useState<{
+    user_id: string;
+    username: string;
+    elo_rating: number | null;
+  }[]>([]);
   
   useEffect(() => {
     // Fetch available users who could be umpires
@@ -54,7 +58,7 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
   // Tournament format options with availability status
   const tournamentFormats = [
     {
-      value: 'single_elimination',
+      value: 'single_elimination' as const,
       label: 'Single Elimination',
       description: 'Traditional knockout format - lose once and you\'re out',
       available: true,
@@ -62,22 +66,22 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
       details: 'Fast-paced tournament where players are eliminated after one loss. Perfect for quick competitions with clear winners.'
     },
     {
-      value: 'double_elimination',
-      label: 'Double Elimination',
+      value: 'double_elimination' as const,
+      label: 'Double Elimination', 
       description: 'Two-loss elimination format - more forgiving for players',
       available: true,
       icon: Award,
       details: 'Players must lose twice to be eliminated. Provides second chances while maintaining competitive structure. Features winners and losers brackets.'
     },
     {
-      value: 'round_robin',
+      value: 'round_robin' as const,
       label: 'Round Robin',
       description: 'Everyone plays everyone - fair and comprehensive',
       available: true,
       icon: RotateCcw,
       details: 'Every player competes against all other players. Most fair format ensuring maximum court time for all participants.'
     }
-  ] as const;
+  ];
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -92,20 +96,7 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
     }
   };
 
-  const handleDateChange = (type: 'registration' | 'start' | 'end', date: Date) => {
-    const fieldMap = {
-      registration: 'registrationDeadline',
-      start: 'startDate',
-      end: 'endDate'
-    };
-    
-    setFormData(prev => ({ ...prev, [fieldMap[type]]: date }));
-    
-    // Clear related errors
-    if (errors[fieldMap[type]]) {
-      setErrors(prev => ({ ...prev, [fieldMap[type]]: '' }));
-    }
-  };
+
 
   const isPowerOfTwo = (n: number): boolean => {
     return n > 0 && (n & (n - 1)) === 0;
@@ -170,7 +161,7 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
 
     try {
       // Create tournament in Supabase
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tournaments')
         .insert({
           name: formData.name,
@@ -498,14 +489,19 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
       {/* Multi-Select Calendar Modal */}
       {showCalendar && (
         <MultiSelectCalendar
-          startDate={formData.startDate}
-          endDate={formData.endDate}
-          onDateChange={(type, date) => {
-            if (type === 'start' || type === 'end') {
-              handleDateChange(type, date);
+          selectedDates={[formData.startDate, formData.endDate].filter(Boolean) as Date[]}
+          onDatesChange={(dates: Date[]) => {
+            if (dates.length > 0) {
+              setFormData(prev => ({ 
+                ...prev, 
+                startDate: dates[0] || null,
+                endDate: dates[1] || null
+              }));
             }
+            setShowCalendar(false);
           }}
-          onClose={() => setShowCalendar(false)}
+          maxSelectableDates={2}
+          className="tournament-calendar"
         />
       )}
     </>

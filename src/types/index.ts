@@ -1,17 +1,35 @@
+// Import Json type from supabase
+import type { Json } from './supabase';
+
+// Database-aligned types
+export type DatabaseProfile = {
+  user_id: string;
+  username: string;
+  bio: string | null;
+  created_at: string | null;
+  elo_rating: number | null;
+  matches_played: number | null;
+  matches_won: number | null;
+  player_style_analysis: string | null;
+  profile_picture_url: string | null;
+  skill_level: string | null;
+  updated_at: string | null;
+};
+
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name?: string;
   username?: string;
   phone?: string;
   location?: string;
   bio?: string;
   profilePicture?: string | null;
-  skillLevel: 'Beginner' | 'Intermediate' | 'Advanced';
-  rating: number;
-  matchesPlayed: number;
-  matchesWon: number;
-  isOnboarded: boolean;
+  skillLevel?: 'Beginner' | 'Intermediate' | 'Advanced';
+  rating?: number;
+  matchesPlayed?: number;
+  matchesWon?: number;
+  isOnboarded?: boolean;
 }
 
 export interface TennisScore {
@@ -26,51 +44,120 @@ export interface TennisScore {
   serving_player?: 'player1' | 'player2';
 }
 
-export interface Match {
+// Database-aligned Match type
+export type DatabaseMatch = {
   id: string;
-  challengerId: string;
-  challengedId: string;
-  player1?: { username: string; elo_rating: number };
-  player2?: { username: string; elo_rating: number };
+  tournament_id: string | null;
+  player1_id: string;
+  player2_id: string;
+  winner_id: string | null;
+  score: Json | null; // Json type from database
+  status: string | null;
   date: string;
   location: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'declined' | 'in_progress' | 'cancelled';
+  match_number: number | null;
+  round: number | null;
+  summary: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export interface Match {
+  id: string;
+  challengerId?: string;
+  challengedId?: string;
+  tournament_id?: string | null;
+  player1_id?: string;
+  player2_id?: string;
+  player1?: { username: string; elo_rating: number | null };
+  player2?: { username: string; elo_rating: number | null };
+  date: string;
+  location: string;
+  status?: 'pending' | 'confirmed' | 'completed' | 'declined' | 'in_progress' | 'cancelled' | null;
   challengerScore?: number;
   challengedScore?: number;
-  winner?: string; // winnerId
-  winnerProfile?: { username: string };
-  createdAt: string;
+  winner?: string | null; // winnerId
+  winner_id?: string | null;
+  winnerProfile?: { username: string } | null;
+  createdAt?: string | null;
+  created_at?: string | null;
   detailedStatsId?: string; // Link to detailed statistics
-  score?: TennisScore; // Proper tennis score object
+  score?: TennisScore | Json | null; // Can be either TennisScore interface or Json from database
   scoreDisplay?: string | null; // Formatted score string for display
-  tournamentId?: string; // ID of the tournament this match belongs to
+  tournamentId?: string | null; // ID of the tournament this match belongs to
+  match_number?: number | null;
+  round?: number | null;
+  summary?: string | null;
+  updated_at?: string | null;
 }
+
+// Database-aligned Tournament type
+export type DatabaseTournament = {
+  id: string;
+  name: string;
+  description: string;
+  organizer_id: string;
+  start_date: string;
+  end_date: string;
+  format: string | null;
+  location: string;
+  max_participants: number;
+  status: string | null;
+  brackets_generated: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+  entry_fee: number | null;
+  prize_pool: number | null;
+};
 
 export interface Tournament {
   id: string;
   name: string;
   description: string;
-  organizerId: string;
-  registrationDeadline: string;
-  startDate: string;
-  endDate: string;
-  format: 'single_elimination' | 'double_elimination' | 'round_robin';
+  organizerId?: string;
+  organizer_id?: string;
+  registrationDeadline?: string;
+  startDate?: string;
+  start_date?: string;
+  endDate?: string;
+  end_date?: string;
+  format?: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss' | string | null;
   location: string;
-  maxParticipants: number;
-  umpireId: string;
-  status: 'registration_open' | 'registration_closed' | 'in_progress' | 'completed';
+  maxParticipants?: number;
+  max_participants?: number;
+  umpireId?: string;
+  status?: 'registration_open' | 'registration_closed' | 'in_progress' | 'completed' | string | null;
   winnerId?: string;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
   participantCount?: number;
   isRegistered?: boolean;
+  brackets_generated?: boolean | null;
+  entry_fee?: number | null;
+  prize_pool?: number | null;
+  organizer?: { username: string };
 }
+
+// Database-aligned TournamentParticipant type
+export type DatabaseTournamentParticipant = {
+  id: string;
+  tournament_id: string;
+  player_id: string;
+  seed: number | null;
+  registered_at: string | null;
+};
 
 export interface TournamentParticipant {
   id: string;
-  tournamentId: string;
-  playerId: string;
-  seed?: number;
-  registeredAt: string;
+  tournamentId?: string;
+  tournament_id?: string;
+  playerId?: string;
+  player_id?: string;
+  seed?: number | null;
+  registeredAt?: string | null;
+  registered_at?: string | null;
+  player?: { username: string; elo_rating: number | null };
 }
 
 export interface TournamentMatch {
@@ -87,6 +174,30 @@ export interface TournamentMatch {
   location: string;
   umpireId: string;
   detailedStatsId?: string; // Link to detailed statistics
+}
+
+// Database-aligned VideoHighlight type
+export type DatabaseVideoHighlight = {
+  id: string;
+  match_id: string | null;
+  created_by: string;
+  video_url: string;
+  type: string;
+  timestamp: string;
+  description: string | null;
+  created_at: string | null;
+};
+
+export interface VideoHighlight {
+  id: string;
+  match_id: string;
+  matchId?: string;
+  created_by: string;
+  video_url: string;
+  type: string;
+  timestamp: string;
+  description: string | null;
+  created_at: string | null;
 }
 
 export interface AuthContextType {

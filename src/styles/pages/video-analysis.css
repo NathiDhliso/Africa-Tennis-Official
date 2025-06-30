@@ -243,3 +243,395 @@
     gap: 0.25rem;
   }
 }
+
+/* Mobile-Optimized Tennis Court Analysis */
+.tennis-court-analysis {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.court-detection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.court-status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.court-status-indicator.detected {
+  background: var(--success-green);
+}
+
+.court-status-indicator.detecting {
+  background: var(--warning-orange);
+}
+
+.court-status-indicator.not-detected {
+  background: var(--error-pink);
+}
+
+.court-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.court-region-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.court-region-card:hover {
+  border-color: var(--border-primary);
+  transform: translateY(-2px);
+}
+
+.court-region-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.court-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.court-metric:last-child {
+  border-bottom: none;
+}
+
+.court-metric-label {
+  font-size: 0.875rem;
+  color: var(--text-subtle);
+}
+
+.court-metric-value {
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+.court-metric-value.in {
+  color: var(--success-green);
+}
+
+.court-metric-value.out {
+  color: var(--error-pink);
+}
+
+.court-metric-value.fault {
+  color: var(--warning-orange);
+  animation: flash 1s ease-in-out;
+}
+
+/* Ball Position Indicator */
+.ball-position-indicator {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background: var(--bg-surface-gray);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.court-minimap {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  border: 2px solid var(--border-primary);
+  border-radius: 4px;
+}
+
+.court-lines {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.baseline {
+  position: absolute;
+  width: 90%;
+  height: 2px;
+  background: var(--quantum-cyan);
+  left: 5%;
+}
+
+.baseline.top {
+  top: 10%;
+}
+
+.baseline.bottom {
+  bottom: 10%;
+}
+
+.service-line {
+  position: absolute;
+  width: 70%;
+  height: 2px;
+  background: var(--accent-yellow);
+  left: 15%;
+}
+
+.service-line.top {
+  top: 35%;
+}
+
+.service-line.bottom {
+  bottom: 35%;
+}
+
+.net-line {
+  position: absolute;
+  width: 90%;
+  height: 3px;
+  background: var(--warning-orange);
+  left: 5%;
+  top: 48.5%;
+}
+
+.center-line {
+  position: absolute;
+  width: 2px;
+  height: 30%;
+  background: var(--nebula-purple);
+  left: 49%;
+  top: 35%;
+}
+
+.ball-marker {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--success-green);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: bounce 0.5s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 255, 170, 0.6);
+}
+
+.player-marker {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--quantum-cyan);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+}
+
+/* Heatmap Legend */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border-radius: 0.75rem;
+}
+
+.heatmap-gradient {
+  width: 100px;
+  height: 20px;
+  background: linear-gradient(to right, #0066ff, #00ff00, #ffff00, #ff6600, #ff0000);
+  border-radius: 10px;
+}
+
+.heatmap-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100px;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+
+/* Mobile Controls */
+.mobile-court-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.court-control-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 80px;
+}
+
+.court-control-btn:hover,
+.court-control-btn:active {
+  background: var(--hover-bg);
+  border-color: var(--border-primary);
+  transform: scale(1.02);
+}
+
+.court-control-btn.active {
+  background: var(--quantum-cyan);
+  color: white;
+  border-color: var(--quantum-cyan);
+}
+
+.court-control-icon {
+  font-size: 1.5rem;
+}
+
+.court-control-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Performance Indicators */
+.performance-monitor {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-surface-gray);
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}
+
+.performance-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.performance-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.performance-dot.good {
+  background: var(--success-green);
+}
+
+.performance-dot.warning {
+  background: var(--warning-orange);
+}
+
+.performance-dot.poor {
+  background: var(--error-pink);
+}
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+  .tennis-court-analysis {
+    padding: 0.75rem;
+  }
+  
+  .court-analysis-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .ball-position-indicator {
+    height: 150px;
+  }
+  
+  .mobile-court-controls {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .court-control-btn {
+    min-height: 70px;
+    padding: 0.75rem;
+  }
+  
+  .court-metric {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tennis-court-analysis {
+    padding: 0.5rem;
+  }
+  
+  .ball-position-indicator {
+    height: 120px;
+  }
+  
+  .court-control-btn {
+    min-height: 60px;
+    padding: 0.5rem;
+  }
+  
+  .court-control-icon {
+    font-size: 1.25rem;
+  }
+  
+  .court-control-label {
+    font-size: 0.75rem;
+  }
+  
+  .heatmap-legend {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Touch Optimizations */
+@media (pointer: coarse) {
+  .court-control-btn {
+    min-height: 84px;
+    padding: 1.25rem;
+  }
+  
+  .court-control-btn:hover {
+    transform: none;
+  }
+  
+  .court-control-btn:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Animations */
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.2); }
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Play, Trash, Download, Info, X, Video, Activity, Star, TrendingUp, Zap, Target, AlertCircle, Loader2 } from 'lucide-react';
+import { Play, Trash, Download, Video, Activity, Star, TrendingUp, Zap, Target, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useInView } from 'react-intersection-observer';
 
@@ -83,7 +83,7 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
         query = query.eq('match_id', matchId);
       }
       
-      const { data, error: fetchError, count } = await query;
+      const { data, error: fetchError } = await query;
       
       if (fetchError) throw fetchError;
       

@@ -45,33 +45,89 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
 
-  # Functions pointing to the 'dist' directory where compiled code will be.
+  # Core Heavy-Computation Functions
+  
+  # 1. Live Scoring Function
   UpdateScoreFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: dist/lambdas/update-score/
       Handler: index.handler
       Events:
-        Api:
+        UpdateScore:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /matches/{matchId}/point
+            Method: post
+        UpdateScoreLegacy:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
             Path: /matches/{matchId}/score
             Method: post
 
+  # 2. Tournament Bracket Generation Function  
   GenerateBracketFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: dist/lambdas/generate-bracket/
       Handler: index.handler
       Events:
-        Api:
+        GenerateBracket:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
             Path: /tournaments/{tournamentId}/generate-bracket
             Method: post
 
+  # 3. Stats Aggregation Function (API + Scheduled)
+  AggregateStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/aggregate-stats/
+      Handler: index.handler
+      Timeout: 300
+      MemorySize: 512
+      Events:
+        # API endpoint for manual aggregation
+        ManualAggregation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /stats/aggregate
+            Method: post
+        # Scheduled aggregation every hour
+        ScheduledAggregation:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 * * * ? *)
+            Name: HourlyStatsAggregation
+            Description: Aggregates player statistics hourly
+        # Daily comprehensive aggregation  
+        DailyAggregation:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 2 * * ? *)
+            Name: DailyStatsAggregation
+            Description: Daily comprehensive statistics aggregation at 2 AM UTC
+
+  # Rankings API Function
+  GetRankingsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/get-rankings/
+      Handler: index.handler
+      Events:
+        GetRankings:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /rankings
+            Method: get
+
+  # Supporting Functions
+  
   SendNotificationFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -91,19 +147,6 @@ Resources:
               - ses:SendEmail
               - ses:SendRawEmail
             Resource: '*'
-
-  AggregateStatsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: dist/lambdas/aggregate-stats/
-      Handler: index.handler
-      Events:
-        ScheduledEvent:
-          Type: Schedule
-          Properties:
-            Schedule: cron(0 2 * * ? *)
-            Name: DailyStatsAggregation
-            Description: Aggregates player statistics daily at 2 AM UTC
 
   GetMatchesFunction:
     Type: AWS::Serverless::Function
@@ -195,3 +238,5 @@ Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL
     Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/
+    Export:
+      Name: AfricaTennisApiEndpoint

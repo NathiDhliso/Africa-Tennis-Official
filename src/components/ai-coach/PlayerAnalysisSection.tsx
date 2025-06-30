@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Brain, Sparkles, Loader2, TrendingUp, Target, Award } from 'lucide-react';
-import { apiClient } from '../../lib/aws';
+import apiClient from '../../lib/aws';
 import { useAuthStore } from '../../stores/authStore';
 import type { Profile } from '../../types/database';
 

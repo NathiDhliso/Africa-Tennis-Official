@@ -1,7 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Video, Film, Zap, Info, X, Loader2 } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
+import { ArrowLeft, Video, Film, Zap, Info, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -22,11 +21,9 @@ interface VideoHighlight {
 const VideoAnalysisPage: React.FC = () => {
   const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'live' | 'highlights'>('live');
   const [currentHighlight, setCurrentHighlight] = useState<VideoHighlight | null>(null);
   const [showHighlightPlayer, setShowHighlightPlayer] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Check if storage bucket exists and create it if needed
@@ -34,7 +31,7 @@ const VideoAnalysisPage: React.FC = () => {
     const checkStorageBucket = async () => {
       try {
         // Try to get bucket info
-        const { data, error } = await supabase.storage.getBucket('match-highlights');
+        const { error } = await supabase.storage.getBucket('match-highlights');
         
         if (error) {
           console.error('Error checking storage bucket:', error);
@@ -56,7 +53,7 @@ const VideoAnalysisPage: React.FC = () => {
     }
   };
 
-  const handleSaveHighlight = async (videoUrl: string) => {
+  const handleSaveHighlight = async (_videoUrl: string) => {
     // Switch to highlights tab after saving
     setActiveTab('highlights');
   };

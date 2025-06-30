@@ -1,21 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Play, 
-  Pause, 
   RotateCcw, 
   CheckCircle, 
-  Clock, 
   Trophy, 
-  Users,
   AlertTriangle,
   ArrowLeft,
   Plus,
-  Minus,
-  Zap,
-  Target,
-  Award,
-  Gavel,
-  Info,
   Sparkles,
   Loader2,
   X,
@@ -24,13 +14,12 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
-import { apiClient } from '../../lib/aws';
+import apiClient from '../../lib/aws';
 import LoadingSpinner from '../LoadingSpinner';
 import ErrorDisplay from '../ErrorDisplay';
 import VideoTrackingPanel from '../video/VideoTrackingPanel';
 import type { Database } from '../../types/database';
 
-type Tournament = Database['public']['Tables']['tournaments']['Row'];
 type Match = Database['public']['Tables']['matches']['Row'] & {
   player1?: { username: string; elo_rating: number }
   player2?: { username: string; elo_rating: number }
@@ -77,7 +66,6 @@ const MatchScoring: React.FC<{
   match: Match;
   onBack: () => void;
 }> = ({ match, onBack }) => {
-  const { user } = useAuthStore();
   const [score, setScore] = useState<MatchScore | null>(null);
   const [pointType, setPointType] = useState<string>('point_won');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,8 +80,6 @@ const MatchScoring: React.FC<{
   const [confirmEndMatch, setConfirmEndMatch] = useState(false);
   const [lastPointPlayerId, setLastPointPlayerId] = useState<string | null>(null);
   const [scoreHistory, setScoreHistory] = useState<MatchScoreHistory[]>([]);
-  const [player1Profile, setPlayer1Profile] = useState<any>(null);
-  const [player2Profile, setPlayer2Profile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const scoreRef = useRef<MatchScore | null>(null);
   const [umpireInsight, setUmpireInsight] = useState<UmpireInsight | null>(null);
@@ -462,16 +448,7 @@ const MatchScoring: React.FC<{
     return match.player1_id;
   };
 
-  const getPointTypeLabel = (type: string): string => {
-    switch (type) {
-      case 'ace': return 'Ace';
-      case 'winner': return 'Winner';
-      case 'double_fault': return 'Double Fault';
-      case 'forced_error': return 'Forced Error';
-      case 'unforced_error': return 'Unforced Error';
-      default: return 'Point';
-    }
-  };
+
 
   const getPointTypeColor = (type: string): string => {
     switch (type) {

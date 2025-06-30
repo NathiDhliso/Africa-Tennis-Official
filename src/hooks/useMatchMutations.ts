@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../lib/aws';
 import { supabase } from '../lib/supabase';
-import { apiClient } from '../lib/aws';
 import type { Database } from '../types/database';
 
 type MatchInsert = Database['public']['Tables']['matches']['Insert'];
@@ -17,57 +17,118 @@ const updateMatchFn = async ({ id, updates }: { id: string; updates: MatchUpdate
   if (error) throw error;
 };
 
-const awardPointFn = async ({ matchId, winningPlayerId, pointType }: { matchId: string; winningPlayerId: string; pointType?: string }) => {
-  try {
-    // First try to use the API Gateway endpoint
-    const response = await apiClient.updateMatchScore(matchId, {
-      winningPlayerId,
-      pointType: pointType || 'point_won',
-    });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to update score');
-    }
-    
-    return response.data;
-  } catch (apiError) {
-    console.error('API error, falling back to direct Supabase call:', apiError);
-    
-    // Fallback to direct Supabase RPC call
-    const { data, error } = await supabase.rpc('calculate_tennis_score', {
-      match_id: matchId,
-      winning_player_id: winningPlayerId,
-      point_type: pointType || 'point_won'
-    });
-    
-    if (error) throw error;
-    return data;
-  }
-};
-
-export const useMatchMutations = (userId?: string) => {
+export const useMatchMutations = () => {
   const queryClient = useQueryClient();
 
-  const createMatch = useMutation({
-    mutationFn: createMatchFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['matches', userId] });
+  // Live scoring mutation - now uses AWS Lambda
+  const updateScoreMutation = useMutation({
+    mutationFn: async (variables: {
+      matchId: string;
+      winningPlayerId: string;
+      pointType?: string;
+    }) => {
+      console.log('🎾 Updating match score via AWS Lambda...');
+      
+      // Use AWS Lambda for heavy score calculation
+      const response = await apiClient.updateMatchScore(variables.matchId, {
+        winningPlayerId: variables.winningPlayerId,
+        pointType: variables.pointType || 'point_won'
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update score');
+      }
+
+      // Update the match in Supabase with the new score
+      const { error: updateError } = await supabase
+        .from('matches')
+        .update({ 
+          score: response.data,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', variables.matchId);
+
+      if (updateError) {
+        throw new Error('Failed to save score to database');
+      }
+
+      return response.data;
     },
+    onSuccess: (data, variables) => {
+      // Invalidate and refetch match data
+      queryClient.invalidateQueries({ queryKey: ['match', variables.matchId] });
+      queryClient.invalidateQueries({ queryKey: ['matches'] });
+      
+      console.log('✅ Score updated successfully via AWS');
+    },
+    onError: (error) => {
+      console.error('❌ Score update failed:', error);
+    }
   });
 
-  const updateMatch = useMutation({
-    mutationFn: updateMatchFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['matches', userId] });
+  // Generate bracket mutation - now uses AWS Lambda
+  const generateBracketMutation = useMutation({
+    mutationFn: async (tournamentId: string) => {
+      console.log('🏆 Generating tournament bracket via AWS Lambda...');
+      
+      const response = await apiClient.generateBracket(tournamentId);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to generate bracket');
+      }
+
+      return response.data;
     },
+    onSuccess: (data, tournamentId) => {
+      // Invalidate tournament and matches data
+      queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] });
+      queryClient.invalidateQueries({ queryKey: ['matches'] });
+      
+      console.log('✅ Bracket generated successfully via AWS');
+    },
+    onError: (error) => {
+      console.error('❌ Bracket generation failed:', error);
+    }
   });
 
-  const awardPoint = useMutation({
-    mutationFn: awardPointFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['matches', userId] });
+  // Stats aggregation mutation - AWS Lambda only
+  const aggregateStatsMutation = useMutation({
+    mutationFn: async (playerId?: string) => {
+      console.log('📊 Aggregating stats via AWS Lambda...');
+      
+      const response = await apiClient.aggregateStats(playerId);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to aggregate stats');
+      }
+
+      return response.data;
     },
+    onSuccess: (data) => {
+      // Invalidate rankings and stats data
+      queryClient.invalidateQueries({ queryKey: ['rankings'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      
+      console.log('✅ Stats aggregated successfully via AWS');
+    },
+    onError: (error) => {
+      console.error('❌ Stats aggregation failed:', error);
+    }
   });
 
-  return { createMatch, updateMatch, awardPoint };
+  return {
+    updateScore: updateScoreMutation,
+    generateBracket: generateBracketMutation,
+    aggregateStats: aggregateStatsMutation,
+    
+    // Helper to get backend status
+    getBackendStatus: () => apiClient.getBackendStatus(),
+    
+    // Helper to toggle backend for testing
+    toggleBackend: () => {
+      apiClient.toggleBackend();
+      // Invalidate all queries to force refetch with new backend
+      queryClient.invalidateQueries();
+    }
+  };
 };

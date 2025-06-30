@@ -5,19 +5,14 @@ import {
   MapPin, 
   Clock, 
   Trophy, 
-  Target,
-  TrendingUp,
   BarChart3,
   Play,
-  Award,
   Users,
   Activity,
-  Zap,
   Star,
   Sparkles,
   Loader2
 } from 'lucide-react';
-import { Match } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import MatchRequestActions from './matches/MatchRequestActions';
 import LoadingSpinner from './LoadingSpinner';
@@ -68,7 +63,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
     
     setIsLoading(true);
     try {
-      const { data: matchData, error } = await supabase
+      const { data: matchData, error: matchError } = await supabase
         .from('matches')
         .select(`
           *,
@@ -78,7 +73,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
         .eq('id', match.id)
         .single();
 
-      if (error) throw error;
+      if (matchError) throw matchError;
 
       setPlayer1Profile(matchData.player1 as PlayerProfile);
       setPlayer2Profile(matchData.player2 as PlayerProfile);
@@ -131,29 +126,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
     }
   };
 
-  // Format score for display
-  const getFormattedScore = () => {
-    if (typeof match.score === 'string') {
-      return match.score;
-    } 
-    
-    if (match.score && typeof match.score === 'object') {
-      try {
-        const scoreObj = match.score as Record<string, unknown>;
-        const sets = scoreObj.sets as Array<Record<string, number>> || [];
-        if (sets.length === 0) return 'No sets played';
-        
-        return sets.map((set: Record<string, number>) => 
-          `${set.player1_games}-${set.player2_games}`
-        ).join(', ');
-      } catch (err) {
-        console.error('Error formatting score:', err);
-        return 'Score unavailable';
-      }
-    }
-    
-    return 'Score unavailable';
-  };
+
 
   const handleGenerateSummary = async () => {
     if (!match.id || !isCompleted) return;

@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Play, 
-  Pause, 
-  RotateCcw, 
-  CheckCircle, 
-  Clock, 
   Trophy, 
-  Users,
   AlertTriangle,
-  ArrowLeft,
-  Plus,
-  Minus,
-  Zap,
-  Target,
-  Award,
   Gavel,
-  Info
+  Info,
+  Users
 } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { apiClient } from '../lib/aws';
+import apiClient from '../lib/aws';
+import '../styles/pages/umpire.css';
+import { useAuthStore } from '../stores/authStore';
 import MatchScoring from './matches/MatchScoring';
 import LoadingSpinner from './LoadingSpinner';
 import { Link } from 'react-router-dom';
