@@ -12,17 +12,24 @@ const fetchMatches = async (userId?: string): Promise<Match[]> => {
   }
   
   try {
+    // 🚀  Return only the columns needed for list-views to shrink payload size
+    const BASE_COLUMNS = `
+      id,
+      date,
+      location,
+      status,
+      winner_id,
+      player1:profiles!matches_player1_id_fkey(username, elo_rating),
+      player2:profiles!matches_player2_id_fkey(username, elo_rating),
+      winner:profiles!matches_winner_id_fkey(username)
+    `;
+
     const { data, error } = await supabase
       .from('matches')
-      .select(`
-        *,
-        player1:profiles!matches_player1_id_fkey(username, elo_rating),
-        player2:profiles!matches_player2_id_fkey(username, elo_rating),
-        winner:profiles!matches_winner_id_fkey(username)
-      `)
+      .select(BASE_COLUMNS)
       .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
       .order('date', { ascending: false });
-      
+
     if (error) throw error;
     return data || [];
   } catch (error) {
@@ -48,9 +55,11 @@ export const useMatches = (userId?: string) => {
     queryKey,
     queryFn: () => fetchMatches(userId),
     enabled: !!userId,
-    staleTime: 30000, // 30 seconds
+    // Cache for 5 min, garbage-collect after 15 min
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: true,
+    refetchOnMount: false,
   });
 
   // Set up real-time subscription for matches

@@ -1,0 +1,11 @@
+{
+  "name": "common-deps-layer",
+  "version": "1.0.0",
+  "description": "Shared node dependencies for Africa Tennis Platform Lambdas (supabase-js, uuid, etc.)",
+  "private": true,
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.3",
+    "uuid": "^9.0.0"
+  }
+} 

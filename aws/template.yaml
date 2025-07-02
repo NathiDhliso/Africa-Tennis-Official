@@ -7,6 +7,9 @@ Globals:
     Timeout: 30
     MemorySize: 256
     Runtime: nodejs18.x
+    # Attach the shared dependencies layer to every Lambda by default
+    Layers:
+      - !Ref CommonDependenciesLayer
     Environment:
       Variables:
         SUPABASE_URL: !Ref SupabaseUrl
@@ -35,6 +38,19 @@ Parameters:
     Default: www.africatennis.com
 
 Resources:
+  # -------------------------------------------------------
+  # Shared layer with Supabase SDK, uuid and other utilities
+  # -------------------------------------------------------
+  CommonDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: common-dependencies
+      Description: Shared node_modules for all Lambdas (supabase-js, uuid, etc.)
+      ContentUri: layers/common-deps/
+      CompatibleRuntimes:
+        - nodejs18.x
+      RetentionPolicy: Delete
+
   # API Gateway
   ApiGateway:
     Type: AWS::Serverless::Api
@@ -44,6 +60,16 @@ Resources:
         AllowOrigin: "'*'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      Auth:
+        DefaultAuthorizer: SupabaseJWTAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          SupabaseJWTAuthorizer:
+            JwtConfiguration:
+              Issuer: !Sub https://${SupabaseUrl}/auth/v1
+              Audience:
+                - authenticated
+            IdentitySource: "$request.header.Authorization"
 
   # Core Heavy-Computation Functions
   
@@ -58,7 +84,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /matches/{matchId}/point
+            Path: /compute/update-score/{matchId}
             Method: post
         UpdateScoreLegacy:
           Type: Api
@@ -78,7 +104,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /tournaments/{tournamentId}/generate-bracket
+            Path: /compute/generate-bracket/{tournamentId}
             Method: post
 
   # 3. Stats Aggregation Function (API + Scheduled)
@@ -95,7 +121,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /stats/aggregate
+            Path: /compute/aggregate-stats
             Method: post
         # Scheduled aggregation every hour
         ScheduledAggregation:
@@ -123,7 +149,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /rankings
+            Path: /query/get-rankings
             Method: get
 
   # Supporting Functions
@@ -158,7 +184,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /matches
+            Path: /query/get-matches
             Method: get
 
   GenerateMatchSummaryFunction:
@@ -171,7 +197,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /matches/{matchId}/generate-summary
+            Path: /compute/generate-match-summary/{matchId}
             Method: post
       Policies:
         - Statement:
@@ -190,7 +216,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /players/{playerId}/generate-style
+            Path: /compute/generate-player-style/{playerId}
             Method: post
             Auth:
               Authorizer: 'NONE'
@@ -211,7 +237,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /matches/{matchId}/umpire-insight
+            Path: /compute/get-umpire-insight/{matchId}
             Method: post
       Policies:
         - Statement:

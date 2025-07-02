@@ -56,7 +56,7 @@ class ApiClient {
   }) {
     if (this.useAWS) {
       console.log('🚀 Using AWS Lambda for score update');
-      return this.request(`/matches/${matchId}/point`, {
+      return this.request(`/compute/update-score/${matchId}`, {
         method: 'POST',
         body: JSON.stringify(data)
       });
@@ -88,7 +88,7 @@ class ApiClient {
   async generateBracket(tournamentId: string) {
     if (this.useAWS) {
       console.log('🚀 Using AWS Lambda for bracket generation');
-      return this.request(`/tournaments/${tournamentId}/generate-bracket`, {
+      return this.request(`/compute/generate-bracket/${tournamentId}`, {
         method: 'POST'
       });
     } else {
@@ -126,7 +126,7 @@ class ApiClient {
       if (params?.offset) queryParams.append('offset', params.offset.toString());
       if (params?.skill_level) queryParams.append('skill_level', params.skill_level);
       
-      const endpoint = `/rankings${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const endpoint = `/query/get-rankings${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       return this.request(endpoint, { method: 'GET' });
     } else {
       // Fallback to existing implementation (will be handled by useRankings hook)
@@ -140,7 +140,7 @@ class ApiClient {
     if (this.useAWS) {
       console.log('🚀 Using AWS Lambda for stats aggregation');
       const queryParams = playerId ? `?player_id=${playerId}` : '';
-      return this.request(`/stats/aggregate${queryParams}`, {
+      return this.request(`/compute/aggregate-stats${queryParams}`, {
         method: 'POST'
       });
     } else {
@@ -152,32 +152,50 @@ class ApiClient {
   // --- Existing Endpoints (Keep for compatibility) ---
 
   async getMatches() {
-    return this.request('/matches');
+    return this.request('/query/get-matches');
   }
 
-  async generateMatchSummary() {
+  async generateMatchSummary(matchId: string) {
+    if (this.useAWS) {
+      console.log('🚀 Using AWS Lambda for match summary');
+      return this.request(`/compute/generate-match-summary/${matchId}`, { method: 'POST' });
+    }
+    // Fallback – keep running on the client (placeholder content)
+    console.log('⚠️ Using fallback static match summary');
     return {
       success: true,
       data: {
-        summary: "An exciting match that featured powerful serving and strong baseline rallies. The first set was tightly contested with both players holding serve until a crucial break point was converted. This victory marks another strong performance in what has been an impressive tournament run."
+        summary: 'An exciting match that featured powerful serving and strong baseline rallies. The first set was tightly contested with both players holding serve until a crucial break. This victory marks another strong performance in what has been an impressive tournament run.'
       }
     };
   }
 
-  async generatePlayerStyle() {
+  async generatePlayerStyle(playerId: string) {
+    if (this.useAWS) {
+      console.log('🚀 Using AWS Lambda for player style');
+      return this.request(`/compute/generate-player-style/${playerId}`, { method: 'POST' });
+    }
+    // Fallback static response
+    console.log('⚠️ Using fallback static player style analysis');
     return {
       success: true,
       data: {
-        playerStyleAnalysis: "This player demonstrates a balanced all-court game with strong baseline consistency. Their forehand is their primary weapon, showing good depth and placement. Backhand is solid but could be more aggressive in attacking opportunities. Serve is reliable rather than dominant, with good placement compensating for moderate power. At the net, they show decent volleying skills but could improve their approach shots. Mental game is strong, particularly in pressure situations. To advance further, focus should be on developing a more aggressive transition game and improving second serve consistency."
+        playerStyleAnalysis: 'This player demonstrates a balanced all-court game with strong baseline consistency. Their forehand is their primary weapon, showing good depth and placement. Backhand is solid but could be more aggressive in attacking opportunities. Serve is reliable rather than dominant, with good placement compensating for moderate power. At the net, they show decent volleying skills but could improve their approach shots. Mental game is strong, particularly in pressure situations. To advance further, focus should be on developing a more aggressive transition game and improving second serve consistency.'
       }
     };
   }
 
   async getUmpireInsight(matchId: string) {
+    if (this.useAWS) {
+      console.log('🚀 Using AWS Lambda for umpire insight');
+      return this.request(`/compute/get-umpire-insight/${matchId}`, { method: 'POST' });
+    }
+    // Fallback static response
+    console.log('⚠️ Using fallback static umpire insight');
     return {
       success: true,
       data: {
-        insight: "Based on the current score and match dynamics, this is a crucial moment in the match. The serving player should focus on first serve percentage to maintain pressure. Key areas to watch: player fatigue levels, serving patterns, and court positioning. The momentum could shift significantly with the next few points.",
+        insight: 'Based on the current score and match dynamics, this is a crucial moment in the match. The serving player should focus on first serve percentage to maintain pressure. Key areas to watch: player fatigue levels, serving patterns, and court positioning. The momentum could shift significantly with the next few points.',
         matchId,
         timestamp: new Date().toISOString()
       }
