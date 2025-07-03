@@ -197,6 +197,75 @@
   letter-spacing: 0.05em;
 }
 
+/* Player Avatar Styles */
+.player-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 2px solid var(--glass-border);
+}
+
+.player-avatar-fallback {
+  background: var(--glass-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-avatar-initial {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-standard);
+}
+
+/* Skill Level Styles */
+.skill-beginner {
+  color: var(--success-text);
+}
+
+.skill-intermediate {
+  color: var(--warning-text);
+}
+
+.skill-advanced {
+  color: var(--quantum-orange);
+}
+
+.skill-expert {
+  color: var(--error-text);
+}
+
+/* Change Number */
+.rank-change-number {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Empty State */
+.rankings-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-muted);
+}
+
+.rankings-empty-icon {
+  margin: 0 auto 1rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.rankings-empty h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-standard);
+  margin-bottom: 0.5rem;
+}
+
+.rankings-empty p {
+  color: var(--text-muted);
+}
+
 .matches-col {
   display: flex;
   align-items: center;

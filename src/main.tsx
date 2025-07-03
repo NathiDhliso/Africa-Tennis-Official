@@ -1,4 +1,4 @@
-import { StrictMode, lazy, Suspense } from 'react'
+import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -33,14 +33,34 @@ const App = lazy(() => import('./App'))
 import { supabase } from './lib/supabase'
 import { setApiAuthToken } from './lib/aws'
 
-// Create a client with optimized settings
+// Create a client with optimized settings and enhanced error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000, // 1 minute
-      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-      retry: 1,
-      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh longer
+      gcTime: 15 * 60 * 1000, // 15 minutes - keep in memory longer
+      retry: (failureCount, error: any) => {
+        // Don't retry on insufficient resources or network errors
+        if ((error as Error)?.message?.includes('ERR_INSUFFICIENT_RESOURCES') || 
+            (error as Error)?.message?.includes('Failed to fetch') ||
+            (error as any)?.status >= 400) {
+          return false;
+        }
+        return failureCount < 2;
+      },
+      refetchOnWindowFocus: false, // Don't refetch when user returns to tab
+      refetchOnMount: false, // Don't refetch when component mounts if data exists
+      refetchOnReconnect: 'always', // Always refetch when network reconnects
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    },
+    mutations: {
+      retry: (failureCount, error: any) => {
+        // Don't retry mutations on resource errors
+        if ((error as Error)?.message?.includes('ERR_INSUFFICIENT_RESOURCES')) {
+          return false;
+        }
+        return failureCount < 1;
+      },
     },
   },
 })
@@ -99,7 +119,8 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetError
 }
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+  // Disable StrictMode to avoid double-mount and duplicate realtime subscriptions in dev
+  <>
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
@@ -113,5 +134,5 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
-  </StrictMode>
+  </>
 )

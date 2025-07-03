@@ -142,7 +142,7 @@ export const handler = async (event: {
           .limit(10);
 
         const recentWins = recentMatches?.filter(m => m.winner_id === profile.user_id).length || 0;
-        const recent_form = recentMatches?.length > 0 
+        const recent_form = (recentMatches?.length && recentMatches.length > 0)
           ? (recentWins / recentMatches.length) * 100 
           : 0;
 

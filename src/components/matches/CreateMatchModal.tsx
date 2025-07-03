@@ -69,7 +69,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('user_id, username, elo_rating, skill_level')
         .neq('user_id', user.id)
         .order('elo_rating', { ascending: false });
         

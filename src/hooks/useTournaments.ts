@@ -3,6 +3,18 @@ import { supabase } from '../lib/supabase';
 import { useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
+// Debounce utility to prevent excessive invalidations
+const debounce = <T extends (...args: any[]) => void>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
+};
+
 // Optimized fetch function with caching
 const fetchTournamentsWithDetails = async (userId: string | undefined) => {
   const { data: tournamentsData, error } = await supabase
@@ -107,23 +119,42 @@ export const useTournaments = (tournamentId?: string) => {
 
   // Set up real-time subscription for tournaments and participants
   useEffect(() => {
+    // Debounced invalidation functions to prevent excessive refetches
+    const debouncedInvalidateTournaments = debounce(
+      () => queryClient.invalidateQueries({ queryKey: tournamentsQueryKey }),
+      300 // 300ms delay
+    );
+    
+    const debouncedInvalidateParticipants = debounce(
+      () => {
+        if (tournamentId && participantsQueryKey) {
+          queryClient.invalidateQueries({ queryKey: participantsQueryKey });
+        }
+      },
+      300 // 300ms delay
+    );
+
     const channel = supabase
       .channel('tournaments-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournaments' },
+        { event: 'UPDATE', schema: 'public', table: 'tournaments' },
+        debouncedInvalidateTournaments
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tournament_participants' },
         () => {
-          queryClient.invalidateQueries({ queryKey: tournamentsQueryKey });
+          debouncedInvalidateTournaments();
+          debouncedInvalidateParticipants();
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournament_participants' },
+        { event: 'DELETE', schema: 'public', table: 'tournament_participants' },
         () => {
-          queryClient.invalidateQueries({ queryKey: tournamentsQueryKey });
-          if (tournamentId && participantsQueryKey) {
-            queryClient.invalidateQueries({ queryKey: participantsQueryKey });
-          }
+          debouncedInvalidateTournaments();
+          debouncedInvalidateParticipants();
         }
       )
       .subscribe();

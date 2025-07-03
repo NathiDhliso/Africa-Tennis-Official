@@ -23,14 +23,20 @@ export default defineConfig(({ mode }) => {
         brotliSize: true,
       }),
     ],
+    define: {
+      module: {}, // Shim for long.js UMD build used by TensorFlow
+    },
     server: {
+      host: true,
+      port: 5173,
+      strictPort: true,
       proxy: {
         '/api': {
           target: 'https://dd7v2jtghk.execute-api.us-west-2.amazonaws.com/prod',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
               console.log('proxy error', err);
             });
           },
@@ -46,12 +52,6 @@ export default defineConfig(({ mode }) => {
             'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
             'data-vendor': ['@tanstack/react-query', 'zustand'],
             'ui-vendor': ['lucide-react'],
-            'tensorflow': [
-              '@tensorflow/tfjs', 
-              '@tensorflow/tfjs-backend-webgl',
-              '@tensorflow-models/pose-detection',
-              '@tensorflow-models/coco-ssd'
-            ],
           }
         }
       },
@@ -72,14 +72,14 @@ export default defineConfig(({ mode }) => {
         '@supabase/supabase-js',
         'zustand',
         '@tanstack/react-query',
-        // CORRECTED: Move TensorFlow packages here
+      ],
+      exclude: [
         '@tensorflow/tfjs', 
         '@tensorflow/tfjs-backend-webgl',
+        '@tensorflow/tfjs-backend-cpu',
         '@tensorflow-models/pose-detection',
         '@tensorflow-models/coco-ssd'
-      ],
-      // CORRECTED: Remove the exclude array or leave it empty
-      exclude: [] 
+      ] 
     }
   }
 })

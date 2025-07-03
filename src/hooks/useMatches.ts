@@ -5,6 +5,18 @@ import type { Database } from '../types/database';
 
 type Match = Database['public']['Tables']['matches']['Row'];
 
+// Debounce utility to prevent excessive invalidations
+const debounce = <T extends (...args: unknown[]) => void>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: number;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => func(...args), delay);
+  };
+};
+
 // Optimized fetch function with caching
 const fetchMatches = async (userId?: string): Promise<Match[]> => {
   if (!userId) {
@@ -66,20 +78,33 @@ export const useMatches = (userId?: string) => {
   useEffect(() => {
     if (!userId) return;
 
+    // Debounced invalidation to prevent excessive refetches
+    const debouncedInvalidate = debounce(
+      () => queryClient.invalidateQueries({ queryKey }),
+      300 // 300ms delay
+    );
+
     const channel = supabase
       .channel(`matches-for-${userId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE', // Only listen to updates, not all events
           schema: 'public',
           table: 'matches',
           filter: `or(player1_id.eq.${userId},player2_id.eq.${userId})`,
         },
-        () => {
-          // Invalidate query to trigger refetch
-          queryClient.invalidateQueries({ queryKey });
-        }
+        debouncedInvalidate
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'matches',
+          filter: `or(player1_id.eq.${userId},player2_id.eq.${userId})`,
+        },
+        debouncedInvalidate
       )
       .subscribe();
 

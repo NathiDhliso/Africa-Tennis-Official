@@ -1,21 +1,20 @@
 import { useState, useRef, useCallback, useEffect, memo } from "react";
 import Webcam from "react-webcam";
-import { Video, Play, Pause, Save, Trash, Zap, Target, Award, Sparkles, AlertCircle, Loader2, Activity, X } from "lucide-react";
-import { supabase } from "../../lib/supabase"; // This import is still correct
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-backend-webgl';
-import * as cocoSsd from '@tensorflow-models/coco-ssd';
-import * as poseDetection from '@tensorflow-models/pose-detection';
-
-// --- THIS IS THE LINE TO CHANGE ---
-// Update the path to point to your new types file
-import { Database } from "../../types/supabase"; 
+import { Video, Play, Pause, Save, Trash, Zap, Target, Award, Sparkles, AlertCircle, Loader2, Activity, X, Settings, Cloud } from "lucide-react";
+import { supabase } from "../../lib/supabase";
+import CameraCalibrationGuide from './CameraCalibrationGuide';
+import { videoProcessingService, VideoProcessingOptions } from '../../services/VideoProcessingService';
+import { useAuthStore } from '../../stores/authStore';
+import { Database } from "../../types/supabase";
 
 // The rest of your code remains the same and will now work correctly
 type MatchHighlightInsert = Database['public']['Tables']['match_highlights']['Insert'];
 type MatchEventInsert = Database['public']['Tables']['match_events']['Insert'];
 
-
+// Types for dynamically imported TensorFlow modules
+type TensorFlowModule = typeof import('@tensorflow/tfjs');
+type CocoSsdModule = typeof import('@tensorflow-models/coco-ssd');
+type PoseDetectionModule = typeof import('@tensorflow-models/pose-detection');
 
 interface VideoTrackingPanelProps {
   matchId?: string;
@@ -36,7 +35,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
-  const [detectedObjects, setDetectedObjects] = useState<cocoSsd.DetectedObject[]>([]);
+  const [detectedObjects, setDetectedObjects] = useState<any[]>([]);
   // The 'detectedPoses' state was unused, so it has been removed.
   const [trackingStats, setTrackingStats] = useState({
     ballSpeed: 0,
@@ -56,8 +55,8 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordingInterval, setRecordingInterval] = useState<number | null>(null);
-  const [objectDetectionModel, setObjectDetectionModel] = useState<cocoSsd.ObjectDetection | null>(null);
-  const [poseDetectionModel, setPoseDetectionModel] = useState<poseDetection.PoseDetector | null>(null);
+  const [objectDetectionModel, setObjectDetectionModel] = useState<any>(null);
+  const [poseDetectionModel, setPoseDetectionModel] = useState<any>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
   const [modelsLoaded, setModelsLoaded] = useState<{ tf: boolean, object: boolean, pose: boolean }>({
@@ -65,6 +64,16 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     object: false,
     pose: false
   });
+
+  // Store dynamically imported modules
+  const [tfModule, setTfModule] = useState<TensorFlowModule | null>(null);
+  const [_cocoSsdLib, setCocoSsdLib] = useState<CocoSsdModule | null>(null);
+  const [_poseDetectionLib, setPoseDetectionLib] = useState<PoseDetectionModule | null>(null);
+  const [_calibrationData, setCalibrationData] = useState<any>(null);
+
+  // Camera calibration states
+  const [showCalibrationGuide, setShowCalibrationGuide] = useState(false);
+  const [isCalibrated, setIsCalibrated] = useState(false);
 
   // Enhanced tennis court detection state with mobile optimization
   const [courtLines, setCourtLines] = useState<{
@@ -111,6 +120,13 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     touchControls: true
   });
 
+  // Add visibility state tracking
+  const [isVisible, setIsVisible] = useState(true);
+  const [isIntersecting, setIsIntersecting] = useState(true);
+
+  // Track animation frame to prevent memory leaks
+  const animationFrameRef = useRef<number | null>(null);
+
   // Load available camera devices
   useEffect(() => {
     const getDevices = async () => {
@@ -131,29 +147,92 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     getDevices();
   }, []);
 
-  // Load TensorFlow models with progress tracking
+  // Load TensorFlow models with progress tracking and mobile optimization
   useEffect(() => {
     const loadModels = async () => {
       try {
         setIsModelLoading(true);
 
-        await tf.setBackend('webgl');
+        // Detect device type for optimal model selection
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isLowEndDevice = navigator.hardwareConcurrency ? navigator.hardwareConcurrency <= 2 : false;
+        
+        console.log(`Device detected: ${isMobile ? 'Mobile' : 'Desktop'}, Low-end: ${isLowEndDevice}`);
+
+        // Polyfill Long for protobufjs used by TensorFlow
+        try {
+          const LongLib = await import('long');
+          (window as any).Long = LongLib.default || LongLib;
+        } catch (polyErr) {
+          console.warn('Failed to polyfill Long:', polyErr);
+        }
+
+        // Load TensorFlow module dynamically with backend selection
+        const tf = await import('@tensorflow/tfjs');
+        
+        // Try to load TensorFlow Lite for mobile devices if available
+        let backendLoaded = false;
+        
+        if (isMobile || isLowEndDevice) {
+          try {
+            // For mobile devices, try CPU backend first for better compatibility
+            await import('@tensorflow/tfjs-backend-cpu');
+            await tf.setBackend('cpu');
+            console.log('CPU backend loaded for mobile optimization');
+            backendLoaded = true;
+          } catch (cpuError) {
+            console.log('CPU backend not available, falling back to WebGL');
+          }
+        }
+        
+        if (!backendLoaded) {
+          // Fallback to WebGL backend
+          try {
+            await import('@tensorflow/tfjs-backend-webgl');
+            await tf.setBackend('webgl');
+            console.log('WebGL backend loaded');
+          } catch (webglError) {
+            // Final fallback to CPU backend
+            await import('@tensorflow/tfjs-backend-cpu');
+            await tf.setBackend('cpu');
+            console.log('CPU backend loaded (performance may be limited)');
+          }
+        }
+        
+        setTfModule(tf);
         console.log('TensorFlow backend loaded:', tf.getBackend());
         setModelsLoaded(prev => ({ ...prev, tf: true }));
 
+        // Load object detection model with mobile-optimized settings
+        const cocoSsd = await import('@tensorflow-models/coco-ssd');
+        setCocoSsdLib(cocoSsd);
+        
+        const modelBase = isMobile || isLowEndDevice ? 'lite_mobilenet_v2' : 'mobilenet_v2';
         const objectModel = await cocoSsd.load({
-          base: 'lite_mobilenet_v2'
+          base: modelBase
         });
         setObjectDetectionModel(objectModel);
-        console.log('Object detection model loaded');
+        console.log(`Object detection model loaded: ${modelBase}`);
         setModelsLoaded(prev => ({ ...prev, object: true }));
 
+        // Load pose detection model with mobile optimization
+        const poseDetection = await import('@tensorflow-models/pose-detection');
+        setPoseDetectionLib(poseDetection);
+        
+        const modelType = isMobile || isLowEndDevice 
+          ? poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING 
+          : poseDetection.movenet.modelType.SINGLEPOSE_THUNDER;
+          
         const poseModel = await poseDetection.createDetector(
           poseDetection.SupportedModels.MoveNet,
-          { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+          { 
+            modelType,
+            enableSmoothing: true,
+            multiPoseMaxDimension: isMobile ? 256 : 512 // Reduce resolution for mobile
+          }
         );
         setPoseDetectionModel(poseModel);
-        console.log('Pose detection model loaded');
+        console.log(`Pose detection model loaded: ${modelType}`);
         setModelsLoaded(prev => ({ ...prev, pose: true }));
 
         setIsModelLoading(false);
@@ -176,7 +255,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
         clearInterval(recordingInterval);
       }
     };
-  }, []); // Empty dependency array ensures this runs only once
+  }, []);
 
   // Start video capture
   const handleStartCapture = useCallback(() => {
@@ -247,7 +326,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Save recorded video
+  // Save recorded video using backend processing
   const handleSave = useCallback(async () => {
     if (recordedChunks.length === 0) {
       setError('No video recorded');
@@ -263,34 +342,67 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
         throw new Error('User not authenticated');
       }
 
-      const fileName = `${Date.now()}.webm`;
-      const filePath = `${user.id}/${fileName}`;
-      
-      // The 'uploadData' variable was unused and has been removed.
-      const { error: uploadError } = await supabase.storage
-        .from('match-highlights')
-        .upload(filePath, blob, {
-          contentType: 'video/webm',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
+      // Validate video before processing
+      const validation = videoProcessingService.validateVideo(blob);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '));
       }
 
-      const { data: urlData } = supabase.storage
-        .from('match-highlights')
-        .getPublicUrl(filePath);
-      const videoUrl = urlData.publicUrl;
+      // Show warnings if any
+      if (validation.warnings.length > 0) {
+        console.warn('Video processing warnings:', validation.warnings);
+      }
 
-      // CORRECTED: Build the highlight object dynamically to handle optional match_id
+      // Process video using backend service with enhanced options
+      const processingOptions: VideoProcessingOptions = {
+        enableAI: true,
+        analysisFps: 3, // Analyze 3 frames per second
+        maxFrames: Math.min(90, Math.ceil(recordingTime * 3)), // Limit based on recording time
+        duration: recordingTime
+      };
+
+      const result = await videoProcessingService.processVideoUpload(
+        blob,
+        matchId,
+        user.id,
+        processingOptions
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Video processing failed');
+      }
+
+      // Create match highlight record with processed video data
       const highlightData: MatchHighlightInsert = {
         type: highlightType,
         description: highlightDescription || `${highlightType} highlight`,
-        video_url: filePath,
+        video_url: result.data?.videoUrl || '',
+        thumbnail_url: result.data?.thumbnailUrl || '',
         created_by: user.id,
         ...(matchId && { match_id: matchId }), // Conditionally add match_id
+        metadata: {
+          // Original tracking stats (from frontend)
+          ballSpeed: trackingStats.ballSpeed,
+          shotType: trackingStats.shotType,
+          rallyLength: trackingStats.rallyLength,
+          playerMovement: trackingStats.playerMovement,
+          recordingTime: recordingTime,
+          detectedObjects: detectedObjects.length,
+          courtDetected: courtLines.detected,
+          calibrated: isCalibrated,
+          
+          // Backend processing results
+          originalSize: result.data?.originalSize || 0,
+          compressedSize: result.data?.compressedSize || 0,
+          compressionRatio: result.data?.compressionRatio || '0%',
+          processingTime: result.data?.processingTime || 0,
+          backendAnalysis: result.data?.analysis || null,
+          processedAt: new Date().toISOString(),
+          
+          // Court analysis data
+          courtLines: courtLines,
+          tennisAnalysis: tennisAnalysis
+        }
       };
 
       const { error: highlightError } = await supabase
@@ -303,16 +415,19 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
       }
 
       if (matchId) {
-        // CORRECTED: Ensure metadata is structured correctly for JSONB type
         const eventData: MatchEventInsert = {
-            match_id: matchId,
-            event_type: 'video_recorded',
-            player_id: user.id,
-            description: highlightDescription || `${highlightType} highlight`,
-            metadata: {
-                video_url: videoUrl,
-                highlight_type: highlightType
-            }
+          match_id: matchId,
+          event_type: 'video_recorded',
+          player_id: user.id,
+          description: highlightDescription || `${highlightType} highlight`,
+          metadata: {
+            video_url: result.data?.videoUrl || '',
+            thumbnail_url: result.data?.thumbnailUrl || '',
+            highlight_type: highlightType,
+            compressionRatio: result.data?.compressionRatio || '0%',
+            backendProcessed: true,
+            aiAnalysisEnabled: true
+          }
         };
 
         const { error: eventError } = await supabase
@@ -325,7 +440,12 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
       }
 
       if (onVideoSaved) {
-        onVideoSaved(videoUrl);
+        onVideoSaved(result.data?.videoUrl || '');
+      }
+
+      // Show success message with compression stats
+      if (result.data?.compressionRatio) {
+        console.log(`Video processed successfully! Size reduced by ${result.data.compressionRatio}`);
       }
 
       setRecordedChunks([]);
@@ -337,7 +457,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
       setError(`Failed to save video: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setIsProcessingVideo(false);
     }
-  }, [recordedChunks, highlightType, highlightDescription, matchId, onVideoSaved]);
+  }, [recordedChunks, highlightType, highlightDescription, matchId, onVideoSaved, recordingTime, trackingStats, detectedObjects, courtLines, isCalibrated, tennisAnalysis]);
 
   // Start AI tracking - memoized to prevent unnecessary recreations
   const startTracking = useCallback(async () => {
@@ -357,8 +477,12 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     let prevBallPosition: { x: number, y: number, time: number } | null = null;
 
     const track = async () => {
-      if (!isTracking || !video.readyState || !ctx || !objectDetectionModel || !poseDetectionModel) {
-        if (isTracking) requestAnimationFrame(track);
+      // Only track if component is visible and intersecting
+      if (!isVisible || !isIntersecting || !isTracking) {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
         return;
       }
 
@@ -467,16 +591,37 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
           setTrackingStats(prev => ({ ...prev, rallyLength: prev.rallyLength + 1 }));
         }
         
-        if (isTracking) {
-          requestAnimationFrame(track);
-        }
+        // Draw overlays
+        drawCourtGuidelines(ctx);
+        drawCourtCoverageHeatmap(ctx);
+
+        // Continue tracking with visibility check
+        animationFrameRef.current = requestAnimationFrame(track);
       } catch (err) {
         console.error('Error during tracking:', err);
+        setError('Tracking error occurred. Please try again.');
+        setIsTracking(false);
       }
     };
 
+    // Start the tracking loop
     track();
-  }, [isTracking, objectDetectionModel, poseDetectionModel]); // Dependencies simplified
+  }, [isTracking, isVisible, isIntersecting, objectDetectionModel, poseDetectionModel, courtLines, mobileOptimizations]);
+
+  // Separate useEffect to manage tracking lifecycle
+  useEffect(() => {
+    if (isTracking && modelsLoaded.tf && objectDetectionModel && poseDetectionModel) {
+      startTracking();
+    }
+    
+    // Cleanup on tracking stop
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [isTracking, modelsLoaded.tf, objectDetectionModel, poseDetectionModel, startTracking]);
 
   // Enhanced mobile-optimized court detection
   const detectCourtLines = (video: HTMLVideoElement, ctx: CanvasRenderingContext2D) => {
@@ -1044,6 +1189,64 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     optimizeForMobile();
   }, []);
 
+  // Handle calibration completion
+  const handleCalibrationComplete = (calibration: any) => {
+    setCalibrationData(calibration);
+    setIsCalibrated(true);
+    console.log('Camera calibration completed:', calibration);
+  };
+
+  // Page visibility and intersection observer effects
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Intersection observer for component visibility
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsIntersecting(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentElement = canvasRef.current;
+    if (currentElement) {
+      observer.observe(currentElement);
+    }
+
+    return () => {
+      if (currentElement) {
+        observer.unobserve(currentElement);
+      }
+    };
+  }, []);
+
+  // Cleanup TensorFlow models on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup models and free GPU memory
+      if (objectDetectionModel) {
+        objectDetectionModel.dispose?.();
+      }
+      if (poseDetectionModel) {
+        poseDetectionModel.dispose?.();
+      }
+      if (tfModule) {
+        tfModule.disposeVariables();
+      }
+      // Cancel any pending animation frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [objectDetectionModel, poseDetectionModel, tfModule]);
+
   return (
     <div className="video-tracking-panel">
       {/* --- JSX for UI (unchanged) --- */}
@@ -1137,6 +1340,21 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
                 )}
               </>
             )}
+          </div>
+
+          {/* Camera Calibration Button */}
+          <div className="mb-4 flex justify-center">
+            <button
+              onClick={() => setShowCalibrationGuide(true)}
+              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
+                isCalibrated 
+                  ? 'bg-green-100 text-green-800 border border-green-200' 
+                  : 'bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200'
+              }`}
+            >
+              <Settings className="h-4 w-4" />
+              {isCalibrated ? 'Camera Calibrated ✓' : 'Calibrate Camera for AI Umpire'}
+            </button>
           </div>
 
           <div className="video-controls">
@@ -1235,6 +1453,10 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
           <h3 className="text-lg font-medium mb-4 flex items-center gap-2" style={{ color: 'var(--text-standard)' }}>
             <Sparkles className="h-5 w-5 text-quantum-cyan" />
             AI Tracking Insights
+            <div className="ml-auto flex items-center gap-2 text-sm">
+              <Cloud className="h-4 w-4 text-quantum-cyan" />
+              <span style={{ color: 'var(--text-subtle)' }}>Backend Processing Enabled</span>
+            </div>
           </h3>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -1295,6 +1517,13 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
           </div>
         </div>
       </div>
+
+      {/* Camera Calibration Guide Modal */}
+      <CameraCalibrationGuide
+        isVisible={showCalibrationGuide}
+        onClose={() => setShowCalibrationGuide(false)}
+        onCalibrationComplete={handleCalibrationComplete}
+      />
     </div>
   );
 });

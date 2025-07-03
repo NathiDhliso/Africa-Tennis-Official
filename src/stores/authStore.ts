@@ -16,8 +16,13 @@ interface AuthState {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   fetchProfile: () => Promise<void>;
-  initialize: () => Promise<void>;
+  initialize: () => Promise<(() => void) | void>;
 }
+
+// Request deduplication
+let profileFetchPromise: Promise<void> | null = null;
+let lastProfileFetch = 0;
+const PROFILE_CACHE_TIME = 60000; // 1 minute cache
 
 // Create a more efficient store with optimized persistence
 export const useAuthStore = create<AuthState>()(
@@ -59,13 +64,14 @@ export const useAuthStore = create<AuthState>()(
                 session: null,
                 loading: false 
               });
+              // Clear cache on sign out
+              profileFetchPromise = null;
+              lastProfileFetch = 0;
             }
           });
 
-          // Return unsubscribe function
-          return () => {
-            subscription.unsubscribe();
-          };
+          // Optionally provide an unsubscribe function for callers that wish to clean up
+          return () => subscription.unsubscribe();
         } catch (error) {
           console.error('Auth initialization error:', error);
           set({ loading: false });
@@ -129,6 +135,10 @@ export const useAuthStore = create<AuthState>()(
             profile: null, 
             session: null 
           });
+          
+          // Clear cache
+          profileFetchPromise = null;
+          lastProfileFetch = 0;
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Sign out failed';
           throw new Error(errorMessage);
@@ -136,21 +146,41 @@ export const useAuthStore = create<AuthState>()(
       },
 
       fetchProfile: async () => {
-        const { user } = get();
+        const { user, profile } = get();
         if (!user) return;
 
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-
-          if (error) throw error;
-          set({ profile: data });
-        } catch (error: unknown) {
-          console.error('Error fetching profile:', error);
+        // Return cached profile if it's fresh
+        const now = Date.now();
+        if (profile && (now - lastProfileFetch) < PROFILE_CACHE_TIME) {
+          return;
         }
+
+        // Return existing promise if a fetch is already in progress
+        if (profileFetchPromise) {
+          return profileFetchPromise;
+        }
+
+        // Create new fetch promise
+        profileFetchPromise = (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('user_id, username, elo_rating, matches_played, matches_won, skill_level, bio, profile_picture_url, created_at, updated_at, player_style_analysis')
+              .eq('user_id', user.id)
+              .single();
+
+            if (error) throw error;
+            
+            set({ profile: data as Profile });
+            lastProfileFetch = Date.now();
+          } catch (error: unknown) {
+            console.error('Error fetching profile:', error);
+          } finally {
+            profileFetchPromise = null;
+          }
+        })();
+
+        return profileFetchPromise;
       },
 
       updateProfile: async (updates: Partial<Profile>) => {
@@ -166,7 +196,8 @@ export const useAuthStore = create<AuthState>()(
             .single();
 
           if (error) throw error;
-          set({ profile: data });
+          set({ profile: data as Profile });
+          lastProfileFetch = Date.now(); // Update cache time
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Profile update failed';
           throw new Error(errorMessage);

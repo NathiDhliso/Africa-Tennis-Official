@@ -8,7 +8,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 const VideoTrackingPanel = lazy(() => import('../components/video/VideoTrackingPanel'));
 const VideoHighlightsList = lazy(() => import('../components/video/VideoHighlightsList'));
 
-interface VideoHighlight {
+// Local type to avoid conflict with global VideoHighlight definition
+type Highlight = {
   id: string;
   match_id: string;
   timestamp: string;
@@ -16,34 +17,16 @@ interface VideoHighlight {
   description: string;
   video_url: string;
   created_at: string;
-}
+  created_by?: string;
+};
 
 const VideoAnalysisPage: React.FC = () => {
   const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'live' | 'highlights'>('live');
-  const [currentHighlight, setCurrentHighlight] = useState<VideoHighlight | null>(null);
+  const [currentHighlight, setCurrentHighlight] = useState<Highlight | null>(null);
   const [showHighlightPlayer, setShowHighlightPlayer] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Check if storage bucket exists and create it if needed
-  useEffect(() => {
-    const checkStorageBucket = async () => {
-      try {
-        // Try to get bucket info
-        const { error } = await supabase.storage.getBucket('match-highlights');
-        
-        if (error) {
-          console.error('Error checking storage bucket:', error);
-          setError('Storage setup issue. Please contact support.');
-        }
-      } catch (err) {
-        console.error('Error in storage check:', err);
-      }
-    };
-    
-    checkStorageBucket();
-  }, []);
 
   const handleBack = () => {
     if (matchId) {
@@ -58,7 +41,7 @@ const VideoAnalysisPage: React.FC = () => {
     setActiveTab('highlights');
   };
 
-  const handlePlayHighlight = (highlight: VideoHighlight) => {
+  const handlePlayHighlight = (highlight: Highlight) => {
     setCurrentHighlight(highlight);
     setShowHighlightPlayer(true);
   };
@@ -169,7 +152,7 @@ const VideoAnalysisPage: React.FC = () => {
               
               <VideoHighlightsList 
                 matchId={matchId}
-                onPlayHighlight={handlePlayHighlight}
+                onPlayHighlight={handlePlayHighlight as any}
               />
             </div>
           )}

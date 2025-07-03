@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Calendar, MapPin, Trophy, Clock, Target, ChevronRight, CheckCircle, Play, Award, AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Sparkles, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
 import { useAuthStore } from '../../stores/authStore'
-import { apiClient } from '../../lib/aws'
+import apiClient from '../../lib/aws'
 import type { Database } from '../../types/database'
 
 type Match = Database['public']['Tables']['matches']['Row'] & {
@@ -61,7 +61,7 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
         if (matchData) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('*')
+            .select('user_id, username, elo_rating')
             .in('user_id', [matchData.player1_id, matchData.player2_id])
 
           if (profiles) {
@@ -72,7 +72,7 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
           // Fetch match events
           const { data: eventsData } = await supabase
             .from('match_events')
-            .select('*')
+            .select('id, match_id, type, timestamp, description, score_data')
             .eq('match_id', matchId)
             .order('timestamp', { ascending: true })
 

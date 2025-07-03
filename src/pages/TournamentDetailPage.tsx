@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { TournamentDetails } from '../components/tournaments/TournamentDetails';
-import { apiClient } from '../lib/aws';
+import apiClient from '../lib/aws';
 
 const TournamentDetailPage: React.FC = () => {
   const { tournamentId } = useParams<{ tournamentId: string }>();

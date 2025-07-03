@@ -260,6 +260,107 @@ Resources:
             Path: /health
             Method: get
 
+  # Video Processing Functions
+  
+  # S3 Bucket for video storage
+  VideoStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-africa-tennis-videos"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - HEAD
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  # Video Upload Processing Function
+  ProcessVideoUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/process-video-upload/
+      Handler: index.handler
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref VideoStorageBucket
+      Events:
+        ProcessVideoApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /video/process-upload
+            Method: post
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref VideoStorageBucket
+        - S3WritePolicy:
+            BucketName: !Ref VideoStorageBucket
+
+  # Tennis-Specific Video Analysis Function
+  TennisVideoAnalysisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/tennis-video-analysis/
+      Handler: index.handler
+      Timeout: 600
+      MemorySize: 2048
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref VideoStorageBucket
+      Events:
+        TennisAnalysisApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /video/tennis-analysis
+            Method: post
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref VideoStorageBucket
+        - S3WritePolicy:
+            BucketName: !Ref VideoStorageBucket
+
+  # Video-Based AI Coaching Function
+  VideoBasedAICoachFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/video-based-ai-coach/
+      Handler: index.handler
+      Timeout: 180
+      MemorySize: 512
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref VideoStorageBucket
+      Events:
+        VideoCoachingApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /video/ai-coaching
+            Method: post
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref VideoStorageBucket
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "arn:aws:bedrock:*:*:model/anthropic.claude-3-sonnet-20240229-v1:0"
+
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL

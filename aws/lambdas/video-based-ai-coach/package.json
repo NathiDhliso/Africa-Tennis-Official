@@ -1,0 +1,20 @@
+{
+  "name": "video-based-ai-coach",
+  "version": "1.0.0",
+  "description": "AI-powered tennis coaching based on video analysis",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  }
+} 

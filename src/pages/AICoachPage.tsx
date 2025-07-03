@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, User, Sparkles, Loader2, Trophy, BarChart3, AlertTriangle, Info, CheckCircle, Brain, Target, TrendingUp, Award, Zap } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
-import { apiClient } from '../lib/aws';
+import apiClient from '../lib/aws';
 import type { Database } from '../types/database';
 import PlayerAnalysisSection from '../components/ai-coach/PlayerAnalysisSection';
 

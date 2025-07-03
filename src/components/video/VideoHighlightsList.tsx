@@ -5,18 +5,60 @@ import { useInView } from 'react-intersection-observer';
 
 interface VideoHighlight {
   id: string;
-  match_id: string;
+  match_id: string | null;
   timestamp: string;
   type: string;
-  description: string;
+  description: string | null;
   video_url: string;
-  created_at: string;
+  created_at: string | null;
 }
 
 interface VideoHighlightsListProps {
   matchId?: string;
   onPlayHighlight?: (highlight: VideoHighlight) => void;
 }
+
+// Debounce utility
+const debounce = <T extends (...args: unknown[]) => void>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: number;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => func(...args), delay);
+  };
+};
+
+// Signed URL cache to reduce API calls
+const signedUrlCache = new Map<string, { url: string; expires: number }>();
+
+const getCachedSignedUrl = async (highlightId: string, videoPath: string): Promise<string | null> => {
+  const cached = signedUrlCache.get(highlightId);
+  if (cached && cached.expires > Date.now()) {
+    return cached.url;
+  }
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from('match-highlights')
+      .createSignedUrl(videoPath, 300); // 5 minutes expiry
+      
+    if (error) throw error;
+    
+    if (data?.signedUrl) {
+      signedUrlCache.set(highlightId, {
+        url: data.signedUrl,
+        expires: Date.now() + 240000 // Cache for 4 minutes (less than expiry)
+      });
+      return data.signedUrl;
+    }
+  } catch (err) {
+    console.error('Error creating signed URL:', err);
+  }
+  
+  return null;
+};
 
 // Memoized component to prevent unnecessary re-renders
 const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({ 
@@ -49,16 +91,18 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
   useEffect(() => {
     fetchHighlights(0);
     
+    // Debounced invalidation to prevent excessive refetches
+    const debouncedRefetch = debounce(() => {
+      setPage(0);
+      fetchHighlights(0);
+    }, 500);
+    
     // Set up real-time subscription for highlights
     const highlightsSubscription = supabase
       .channel('match-highlights')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'match_highlights' },
-        () => {
-          // Reset and reload highlights when changes occur
-          setPage(0);
-          fetchHighlights(0);
-        }
+        { event: 'INSERT', schema: 'public', table: 'match_highlights' },
+        debouncedRefetch
       )
       .subscribe();
       
@@ -75,7 +119,7 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
     try {
       let query = supabase
         .from('match_highlights')
-        .select('*')
+        .select('id, match_id, timestamp, type, description, video_url, created_at')
         .order('timestamp', { ascending: false })
         .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
         
@@ -119,24 +163,19 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
 
   const handleDownloadHighlight = async (highlight: VideoHighlight) => {
     try {
-      // Get the video URL using the stored file path
-      const { data, error } = await supabase.storage
-        .from('match-highlights')
-        .createSignedUrl(highlight.video_url, 60); // 60 seconds expiry
-        
-      if (error) {
-        console.error('Error creating signed URL:', error);
-        throw error;
-      }
+      // Use cached signed URL to reduce API calls
+      const signedUrl = await getCachedSignedUrl(highlight.id, highlight.video_url);
       
-      if (data?.signedUrl) {
+      if (signedUrl) {
         // Create a temporary anchor element to trigger download
         const a = document.createElement('a');
-        a.href = data.signedUrl;
+        a.href = signedUrl;
         a.download = `tennis-highlight-${highlight.id}.webm`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+      } else {
+        throw new Error('Failed to generate download URL');
       }
     } catch (err) {
       console.error('Error downloading highlight:', err);

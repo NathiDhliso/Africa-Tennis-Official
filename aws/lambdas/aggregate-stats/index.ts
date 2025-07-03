@@ -18,6 +18,23 @@ interface PlayerStats {
   last_match_date: string | null;
 }
 
+interface ProfileData {
+  user_id: string;
+  username: string;
+  elo_rating: number;
+  matches_played: number;
+  matches_won: number;
+}
+
+interface MatchData {
+  id: string;
+  player1_id: string;
+  player2_id: string;
+  winner_id: string;
+  created_at: string;
+  status: string;
+}
+
 export const handler = async (event: { 
   httpMethod?: string; 
   queryStringParameters?: Record<string, string>;
@@ -156,7 +173,7 @@ async function aggregateAllPlayersStats(supabase: any): Promise<{
     const batch = profiles.slice(i, i + batchSize);
     
     const batchResults = await Promise.all(
-      batch.map(profile => calculatePlayerStats(supabase, profile.user_id, profile.username, profile.elo_rating))
+      batch.map((profile: ProfileData) => calculatePlayerStats(supabase, profile.user_id, profile.username, profile.elo_rating))
     );
     
     playerStats.push(...batchResults.filter(Boolean));
@@ -275,7 +292,7 @@ async function calculatePlayerStats(supabase: any, userId: string, username: str
   let winsVsHigher = 0, matchesVsHigher = 0;
   let winsVsLower = 0, matchesVsLower = 0;
 
-  (matches || []).slice(0, 50).forEach((match, index) => {
+  (matches || []).slice(0, 50).forEach((match: MatchData, index: number) => {
     const opponentElo = opponentElos[index];
     if (!opponentElo) return;
     
