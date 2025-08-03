@@ -12,6 +12,130 @@ export interface VideoProcessingOptions {
   enableAI?: boolean;
 }
 
+export interface PlayerPose {
+  keypoints: Array<{
+    x: number;
+    y: number;
+    confidence: number;
+    name: string;
+  }>;
+  confidence: number;
+}
+
+export interface CourtRegion {
+  type: 'service_box' | 'baseline' | 'net' | 'sideline';
+  coordinates: Array<{ x: number; y: number }>;
+  confidence: number;
+}
+
+export interface BallTrajectory {
+  points: Array<{ x: number; y: number; timestamp: number }>;
+  speed: number;
+  spin: { type: string; rpm: number };
+  confidence: number;
+}
+
+export interface BouncePoint {
+  position: { x: number; y: number };
+  timestamp: number;
+  type: 'first_bounce' | 'second_bounce';
+  inBounds: boolean;
+}
+
+export interface CourtAnalysis {
+  dimensions: { width: number; height: number };
+  orientation: number;
+  surfaceType: string;
+  conditions: string;
+}
+
+export interface UmpireInsight {
+  call: string;
+  confidence: number;
+  timestamp: number;
+  reasoning: string;
+}
+
+export interface PlayerAnalysis {
+  movementPatterns: Array<{
+    type: string;
+    frequency: number;
+    effectiveness: number;
+  }>;
+  shotAnalysis: {
+    forehand: { count: number; accuracy: number; power: number };
+    backhand: { count: number; accuracy: number; power: number };
+    serve: { count: number; accuracy: number; speed: number };
+    volley: { count: number; accuracy: number };
+  };
+  positioning: {
+    courtCoverage: number;
+    netApproaches: number;
+    baselinePlay: number;
+  };
+  fitness: {
+    distanceCovered: number;
+    averageSpeed: number;
+    sprintCount: number;
+  };
+}
+
+export interface TechnicalAnalysis {
+  strokeMechanics: Record<string, {
+    consistency: number;
+    power: number;
+    accuracy: number;
+    recommendations: string[];
+  }>;
+  footwork: {
+    efficiency: number;
+    balance: number;
+    recommendations: string[];
+  };
+}
+
+export interface TacticalAnalysis {
+  gameStyle: string;
+  strengths: string[];
+  weaknesses: string[];
+  patternRecognition: Array<{
+    pattern: string;
+    frequency: number;
+    success_rate: number;
+  }>;
+}
+
+export interface PerformanceMetrics {
+  overall_score: number;
+  technical_score: number;
+  tactical_score: number;
+  fitness_score: number;
+  mental_score: number;
+}
+
+export interface CoachingRecommendation {
+  category: string;
+  priority: 'high' | 'medium' | 'low';
+  description: string;
+  drills: string[];
+}
+
+export interface ComparativeAnalysis {
+  peer_comparison: {
+    ranking_percentile: number;
+    similar_players: string[];
+  };
+  improvement_areas: string[];
+}
+
+export interface PersonalizedDrill {
+  name: string;
+  description: string;
+  duration: number;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  focus_areas: string[];
+}
+
 export interface VideoProcessingResult {
   videoUrl: string;
   compressedSize?: number;
@@ -28,12 +152,12 @@ export interface VideoProcessingResult {
       players: Array<{
         id: string;
         position: { x: number; y: number };
-        pose: any;
+        pose: PlayerPose;
       }>;
     }>;
     courtDetection: {
-      lines: any[];
-      regions: any;
+      lines: Array<{ start: { x: number; y: number }; end: { x: number; y: number }; type: string }>;
+      regions: CourtRegion[];
       confidence: number;
       perspective?: {
         viewAngle?: number;
@@ -65,14 +189,20 @@ export interface TennisAnalysisResult {
         winners: number;
         unforcedErrors: number;
       };
-      playerAnalysis: { [playerId: string]: any };
+      playerAnalysis: { [playerId: string]: PlayerAnalysis };
       ballAnalysis: {
-        trajectories: any[];
-        bouncePoints: any[];
+        trajectories: BallTrajectory[];
+        bouncePoints: BouncePoint[];
       };
-      courtAnalysis: any;
-      highlights: any[];
-      umpireInsights: any;
+      courtAnalysis: CourtAnalysis;
+      highlights: Array<{
+        startTime: number;
+        endTime: number;
+        type: string;
+        description: string;
+        confidence: number;
+      }>;
+      umpireInsights: UmpireInsight[];
     };
     processingTime: number;
   };
@@ -83,12 +213,12 @@ export interface VideoCoachingResult {
   success: boolean;
   data?: {
     coachingAnalysis: {
-      technicalAnalysis: any;
-      tacticalAnalysis: any;
-      performanceMetrics: any;
-      recommendations: any;
-      comparativeAnalysis: any;
-      personalizedDrills: any[];
+      technicalAnalysis: TechnicalAnalysis;
+      tacticalAnalysis: TacticalAnalysis;
+      performanceMetrics: PerformanceMetrics;
+      recommendations: CoachingRecommendation[];
+      comparativeAnalysis: ComparativeAnalysis;
+      personalizedDrills: PersonalizedDrill[];
     };
     analysisKey: string;
     summary: string;
@@ -102,7 +232,7 @@ class VideoProcessingService {
     return session?.access_token || '';
   }
 
-  private async makeRequest(endpoint: string, data: any): Promise<any> {
+  private async makeRequest(endpoint: string, data: Record<string, unknown>): Promise<unknown> {
     const token = await this.getAuthToken();
     
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -283,7 +413,7 @@ class VideoProcessingService {
   async getProcessingStatus(processingId: string): Promise<{
     status: 'processing' | 'completed' | 'failed';
     progress: number;
-    result?: any;
+    result?: unknown;
     error?: string;
   }> {
     try {

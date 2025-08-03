@@ -1,7 +1,6 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Video, Film, Zap, Info, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Lazy load components for better performance
@@ -36,7 +35,7 @@ const VideoAnalysisPage: React.FC = () => {
     }
   };
 
-  const handleSaveHighlight = async (_videoUrl: string) => {
+  const handleSaveHighlight = async () => {
     // Switch to highlights tab after saving
     setActiveTab('highlights');
   };
@@ -152,7 +151,7 @@ const VideoAnalysisPage: React.FC = () => {
               
               <VideoHighlightsList 
                 matchId={matchId}
-                onPlayHighlight={handlePlayHighlight as any}
+                onPlayHighlight={handlePlayHighlight}
               />
             </div>
           )}

@@ -79,8 +79,8 @@ const UmpirePage: React.FC = () => {
       
       setTournaments(data || []);
       setHasInitialLoad(true);
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Error loading tournaments:', error);
         setError({
           visible: true,
@@ -157,8 +157,8 @@ const UmpirePage: React.FC = () => {
       }));
       
       setMatches(matches);
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name !== 'AbortError') {
         console.error('Error loading matches:', error);
         setError({
           visible: true,
