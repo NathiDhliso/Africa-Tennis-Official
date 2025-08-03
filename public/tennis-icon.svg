@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <!-- Quantum glow gradient -->
+    <radialGradient id="quantumGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.8"/>
+      <stop offset="70%" stop-color="#8b5cf6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0a0e17" stop-opacity="0.1"/>
+    </radialGradient>
+    
+    <!-- Tennis ball gradient -->
+    <radialGradient id="ballGradient" cx="40%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#00ffaa"/>
+      <stop offset="50%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#0099cc"/>
+    </radialGradient>
+    
+    <!-- Racket gradient -->
+    <linearGradient id="racketGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#aa55ff"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    
+    <!-- Glow filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background quantum field -->
+  <circle cx="50" cy="50" r="48" fill="url(#quantumGlow)" opacity="0.3"/>
+  
+  <!-- Tennis ball with quantum glow -->
+  <circle cx="50" cy="50" r="32" fill="url(#ballGradient)" stroke="#00ffaa" stroke-width="1.5" filter="url(#glow)"/>
+  
+  <!-- Tennis ball quantum curves -->
+  <path d="M 22 38 Q 50 28 78 38" stroke="#e9ecef" stroke-width="2" fill="none" opacity="0.9"/>
+  <path d="M 22 62 Q 50 72 78 62" stroke="#e9ecef" stroke-width="2" fill="none" opacity="0.9"/>
+  
+  <!-- Futuristic racket handle -->
+  <rect x="46" y="72" width="8" height="22" fill="url(#racketGradient)" rx="4" filter="url(#glow)"/>
+  
+  <!-- Quantum racket head -->
+  <ellipse cx="50" cy="28" rx="14" ry="18" fill="none" stroke="url(#racketGradient)" stroke-width="2.5" filter="url(#glow)"/>
+  
+  <!-- Holographic strings -->
+  <g opacity="0.8">
+    <line x1="41" y1="18" x2="41" y2="38" stroke="#00d4ff" stroke-width="0.8"/>
+    <line x1="46" y1="14" x2="46" y2="42" stroke="#00d4ff" stroke-width="0.8"/>
+    <line x1="50" y1="10" x2="50" y2="46" stroke="#00ffaa" stroke-width="1"/>
+    <line x1="54" y1="14" x2="54" y2="42" stroke="#00d4ff" stroke-width="0.8"/>
+    <line x1="59" y1="18" x2="59" y2="38" stroke="#00d4ff" stroke-width="0.8"/>
+    
+    <line x1="39" y1="22" x2="61" y2="22" stroke="#8b5cf6" stroke-width="0.8"/>
+    <line x1="37" y1="28" x2="63" y2="28" stroke="#aa55ff" stroke-width="0.8"/>
+    <line x1="39" y1="34" x2="61" y2="34" stroke="#8b5cf6" stroke-width="0.8"/>
+  </g>
+  
+  <!-- Quantum particles -->
+  <circle cx="25" cy="25" r="1" fill="#00ffaa" opacity="0.7">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="75" cy="75" r="1" fill="#8b5cf6" opacity="0.7">
+    <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="80" cy="20" r="0.8" fill="#00d4ff" opacity="0.6">
+    <animate attributeName="opacity" values="0.2;0.8;0.2" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>
