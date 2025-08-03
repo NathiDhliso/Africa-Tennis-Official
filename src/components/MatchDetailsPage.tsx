@@ -15,21 +15,11 @@ import {
   Zap,
   Star
 } from 'lucide-react';
-import { Match } from '../types';
+import type { Match } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import MatchRequestActions from './matches/MatchRequestActions';
 import LoadingSpinner from './LoadingSpinner';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../types/database';
-
-type Match = Database['public']['Tables']['matches']['Row'];
-
-interface MatchDetailsPageProps {
-  match: Match;
-  onBack: () => void;
-  onActionComplete?: () => void;
-  onStartScoring?: () => void;
-}
 
 interface PlayerProfile {
   username: string;
@@ -64,6 +54,13 @@ interface MatchHighlight {
   videoUrl?: string;
 }
 
+interface MatchDetailsPageProps {
+  match: Match;
+  onBack: () => void;
+  onActionComplete?: () => void;
+  onStartScoring?: () => void;
+}
+
 const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({ 
   match, 
   onBack, 
@@ -84,6 +81,8 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
   const isUserChallenger = match.player1_id === user?.id;
   const opponent = isUserChallenger ? match.player2_id : match.player1_id;
   const currentUser = isUserChallenger ? match.player1_id : match.player2_id;
+  // Get opponent username from fetched profiles (fallback to 'Opponent')
+  const opponentUsername = isUserChallenger ? player2Profile?.username : player1Profile?.username;
 
   const matchDate = new Date(match.date);
   const isCompleted = match.status === 'completed';
@@ -231,32 +230,24 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
       case 'cancelled':
         return 'Cancelled';
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
+        return String(status);
     }
   };
 
-  // Format score for display
-  const getFormattedScore = () => {
-    if (typeof match.score === 'string') {
-      return match.score;
-    } 
-    
-    if (match.score && typeof match.score === 'object') {
+  // Helper to format score (used in other components if needed)
+  const formatScore = (score: Match['score']): string => {
+    if (!score) return '';
+    if (typeof score === 'string') return score;
+    if (typeof score === 'object' && 'sets' in score) {
       try {
-        const scoreObj = match.score as Record<string, unknown>;
-        const sets = scoreObj.sets as Array<Record<string, number>> || [];
-        if (sets.length === 0) return 'No sets played';
-        
-        return sets.map((set: Record<string, number>) => 
-          `${set.player1_games}-${set.player2_games}`
-        ).join(', ');
-      } catch (err) {
-        console.error('Error formatting score:', err);
-        return 'Score unavailable';
+        // @ts-ignore -- runtime check
+        const sets = score.sets as Array<{ player1_games: number; player2_games: number }>;
+        return sets.map(s => `${s.player1_games}-${s.player2_games}`).join(', ');
+      } catch {
+        return '';
       }
     }
-    
-    return 'Score unavailable';
+    return '';
   };
 
   const renderOverview = () => (
@@ -280,7 +271,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
           {match.winner && (
             <div className="match-winner-display">
               <Trophy size={20} />
-              <span>Winner: {match.winner === user?.id ? 'You' : match.winnerProfile?.username || opponent?.username || 'Opponent'}</span>
+              <span>Winner: {match.winner === user?.id ? 'You' : match.winnerProfile?.username || opponentUsername || 'Opponent'}</span>
             </div>
           )}
         </div>
@@ -451,7 +442,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                   </div>
                 </div>
                 <div className="stat-bar">
-                  <div className="stat-bar-label">{opponent?.username}</div>
+                  <div className="stat-bar-label">{opponentUsername}</div>
                   <div className="stat-bar-container">
                     <div 
                       className="stat-bar-fill opponent"
@@ -476,7 +467,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                   </div>
                   <div className="stat-player">
                     <span className="stat-value">{statistics.shots.opponent}</span>
-                    <span className="stat-label">{opponent?.username}</span>
+                    <span className="stat-label">{opponentUsername}</span>
                   </div>
                 </div>
               </div>
@@ -495,7 +486,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                   </div>
                   <div className="stat-player">
                     <span className="stat-value">{statistics.aces.opponent}</span>
-                    <span className="stat-label">{opponent?.username}</span>
+                    <span className="stat-label">{opponentUsername}</span>
                   </div>
                 </div>
               </div>
@@ -514,7 +505,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                   </div>
                   <div className="stat-player">
                     <span className="stat-value">{statistics.winners.opponent}</span>
-                    <span className="stat-label">{opponent?.username}</span>
+                    <span className="stat-label">{opponentUsername}</span>
                   </div>
                 </div>
               </div>
@@ -537,7 +528,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                     <span className="stat-value">
                       {statistics.breakPoints.opponent.won}/{statistics.breakPoints.opponent.total}
                     </span>
-                    <span className="stat-label">{opponent?.username}</span>
+                    <span className="stat-label">{opponentUsername}</span>
                   </div>
                 </div>
               </div>
@@ -556,7 +547,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
                   </div>
                   <div className="stat-player">
                     <span className="stat-value">{statistics.unforcedErrors.opponent}</span>
-                    <span className="stat-label">{opponent?.username}</span>
+                    <span className="stat-label">{opponentUsername}</span>
                   </div>
                 </div>
               </div>
@@ -641,7 +632,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
           
           <div className="match-details-title-section">
             <h1 className="match-details-title">
-              {currentUser?.username || 'You'} vs {opponent.username}
+              {isUserChallenger ? player1Profile?.username || 'You' : player2Profile?.username || 'You'} vs {opponentUsername || 'Opponent'}
             </h1>
             <div 
               className="match-details-status"

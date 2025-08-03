@@ -10,7 +10,7 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<{email?: string; password?: string}>({});
-  const { login } = useAuth();
+  const { signIn } = useAuth();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,7 +62,7 @@ const LoginPage: React.FC = () => {
     try {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1500));
-      await login(email);
+      await signIn(email, password);
       setMessage('Login successful! Redirecting...');
     } catch (error) {
       setMessage('Invalid credentials. Please try again.');

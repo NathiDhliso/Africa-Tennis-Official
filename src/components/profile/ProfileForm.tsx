@@ -6,7 +6,7 @@ import { User, Camera, Save, X, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
-import type { Database } from '../../types/database'
+import type { Database } from '../../types/supabase-generated'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -160,6 +160,9 @@ export const ProfileForm: React.FC = () => {
           text="Loading profile..." 
           subtext="Retrieving your profile information"
         />
+        <div className="mt-4 text-sm text-gray-500">
+          If this takes too long, try refreshing the page or check your internet connection.
+        </div>
       </div>
     )
   }
@@ -203,7 +206,7 @@ export const ProfileForm: React.FC = () => {
                   />
                 ) : (
                   <div className="profile-picture-placeholder">
-                    {profile.username.charAt(0).toUpperCase()}
+                    {(profile.username || 'U').charAt(0).toUpperCase()}
                   </div>
                 )}
                 <label
@@ -304,17 +307,17 @@ export const ProfileForm: React.FC = () => {
                 </label>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 grid grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{profile.elo_rating}</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{profile.elo_rating || 1200}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Rating</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{profile.matches_played}</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{profile.matches_played || 0}</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Matches</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {profile.matches_played > 0 
-                        ? ((profile.matches_won / profile.matches_played) * 100).toFixed(1) 
+                      {(profile.matches_played || 0) > 0 
+                        ? (((profile.matches_won || 0) / (profile.matches_played || 1)) * 100).toFixed(1) 
                         : '0.0'}%
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Win Rate</div>

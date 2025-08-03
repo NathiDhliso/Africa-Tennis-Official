@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Clock, X, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, X, Calendar, Clock, Check } from 'lucide-react';
+import '../styles/components/multi-select-calendar.css';
 
 interface CalendarDate {
   date: Date;
@@ -23,9 +24,7 @@ interface MultiSelectCalendarProps {
 const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
   selectedDates,
   onDatesChange,
-  maxSelectableDates = 7,
   disabledDates = [],
-  className = ''
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeSelection, setActiveSelection] = useState<'start' | 'end'>('start');
@@ -50,9 +49,7 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
     const month = currentMonth.getMonth();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
     
     const dates: CalendarDate[] = [];
 

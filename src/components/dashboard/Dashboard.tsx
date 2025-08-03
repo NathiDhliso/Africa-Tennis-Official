@@ -15,23 +15,17 @@ export const Dashboard: React.FC = () => {
 
   const matches: Match[] = useMemo(() => {
     if (!rawMatches) return [];
-    return rawMatches.map((m: any) => ({
-      id: m.id,
-      date: m.date,
-      location: m.location,
-      status: m.status,
-      score: m.score,
-      player1: m.player1,
-      player2: m.player2,
-      winnerProfile: m.winnerProfile,
+    return rawMatches.map((m: Match) => ({
+      ...m,
       challengerId: m.player1_id,
       challengedId: m.player2_id,
       createdAt: m.created_at,
-      challengerScore: m.challenger_score,
-      challengedScore: m.challenged_score,
+      challengerScore: m.challengerScore,
+      challengedScore: m.challengedScore,
       winner: m.winner_id,
-      detailedStatsId: m.detailed_stats_id,
-      scoreDisplay: m.score_display,
+      detailedStatsId: m.detailedStatsId,
+      scoreDisplay: m.scoreDisplay,
+      tournamentId: m.tournament_id
     }));
   }, [rawMatches]);
 
@@ -44,16 +38,21 @@ export const Dashboard: React.FC = () => {
       location: t.location,
       format: t.format,
       status: t.status,
-      createdAt: t.created_at,
-      startDate: t.start_date,
-      endDate: t.end_date,
-      organizerId: t.organizer_id,
-      registrationDeadline: t.registration_deadline,
-      maxParticipants: t.max_participants,
-      participantCount: t.participant_count,
-      isRegistered: t.is_registered,
-      umpireId: t.umpire_id,
-      winnerId: t.winner_id,
+      created_at: t.created_at,
+      start_date: t.start_date,
+      end_date: t.end_date,
+      organizer_id: t.organizer_id,
+      registration_deadline: t.registration_deadline,
+      max_participants: t.max_participants,
+      min_participants: t.min_participants,
+      entry_fee: t.entry_fee,
+      prize_pool: t.prize_pool,
+      brackets_generated: t.brackets_generated,
+      updated_at: t.updated_at,
+      participant_count: t.participant_count,
+      is_registered: t.is_registered,
+      umpire_id: t.umpire_id,
+      winner_id: t.winner_id,
     }));
   }, [rawTournaments]);
 

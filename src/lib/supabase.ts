@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '../types/supabase' // <-- Import the Database type
+import { Database } from '../types/supabase-generated' // <-- Import the Database type
 
 // Make sure to replace these with your actual environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL

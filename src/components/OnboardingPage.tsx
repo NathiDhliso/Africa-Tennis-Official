@@ -6,7 +6,7 @@ const OnboardingPage: React.FC = () => {
   const [name, setName] = useState('');
   const [skillLevel, setSkillLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
   const [isLoading, setIsLoading] = useState(false);
-  const { updateUser } = useAuth();
+  const { updateProfile } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,10 +17,9 @@ const OnboardingPage: React.FC = () => {
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    updateUser({
-      name: name.trim(),
-      skillLevel,
-      isOnboarded: true,
+    updateProfile({
+      username: name.trim(),
+      skill_level: skillLevel.toLowerCase() as 'beginner' | 'intermediate' | 'advanced',
     });
   };
 

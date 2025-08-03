@@ -1,0 +1,17 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "africa-tennis-backend"
+s3_bucket = "" # SAM will create this
+s3_prefix = "africa-tennis-backend"
+region = "us-west-2"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = [
+    "SupabaseUrl=https://your-project.supabase.co",
+    "SupabaseServiceRoleKey=your-service-role-key",
+    "SesEmailSource=info@africatennis.com",
+    "FrontendUrl=www.africatennis.com"
+]
+image_repositories = []

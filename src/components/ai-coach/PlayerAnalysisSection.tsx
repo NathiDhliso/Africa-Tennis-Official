@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Brain, Sparkles, Loader2, TrendingUp, Target, Award } from 'lucide-react';
 import apiClient from '../../lib/aws';
-import { useAuthStore } from '../../stores/authStore';
-import type { Profile } from '../../types/database';
+import type { Database } from '../../types/supabase-generated';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface PlayerAnalysisSectionProps {
   selectedPlayer: Profile | null;
@@ -16,7 +17,6 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
   const [isGeneratingAnalysis, setIsGeneratingAnalysis] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { user } = useAuthStore();
 
   const handleGenerateAnalysis = async () => {
     if (!selectedPlayer) return;
@@ -120,6 +120,19 @@ const PlayerAnalysisSection: React.FC<PlayerAnalysisSectionProps> = ({
                 </svg>
               </div>
               <p>{error}</p>
+            </div>
+          </div>
+        )}
+        
+        {success && (
+          <div className="ai-coach-alert ai-coach-alert-success mb-4">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                  <path d="M20 6L9 17l-5-5"></path>
+                </svg>
+              </div>
+              <p>{success}</p>
             </div>
           </div>
         )}

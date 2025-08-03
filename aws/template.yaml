@@ -6,7 +6,7 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 256
-    Runtime: nodejs18.x
+    Runtime: nodejs22.x
     # Attach the shared dependencies layer to every Lambda by default
     Layers:
       - !Ref CommonDependenciesLayer
@@ -48,7 +48,7 @@ Resources:
       Description: Shared node_modules for all Lambdas (supabase-js, uuid, etc.)
       ContentUri: layers/common-deps/
       CompatibleRuntimes:
-        - nodejs18.x
+        - nodejs22.x
       RetentionPolicy: Delete
 
   # API Gateway

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../lib/aws';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../types/database';
+import type { Database } from '../types/supabase-generated';
 
 type MatchInsert = Database['public']['Tables']['matches']['Insert'];
 type MatchUpdate = Database['public']['Tables']['matches']['Update'];
@@ -116,8 +116,21 @@ export const useMatchMutations = () => {
     }
   });
 
+  // Update match mutation - for general match updates
+  const updateMatchMutation = useMutation({
+    mutationFn: updateMatchFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matches'] });
+      console.log('✅ Match updated successfully');
+    },
+    onError: (error) => {
+      console.error('❌ Match update failed:', error);
+    }
+  });
+
   return {
     updateScore: updateScoreMutation,
+    updateMatch: updateMatchMutation,
     generateBracket: generateBracketMutation,
     aggregateStats: aggregateStatsMutation,
     

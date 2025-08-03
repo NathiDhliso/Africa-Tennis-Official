@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -94,8 +94,9 @@ export const SignUpForm: React.FC = () => {
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } catch (error: any) {
-      setMessage(error.message || 'Account creation failed. Please verify your information and try again.');
+    } catch (error: unknown) {
+      const err = error as { message?: string } | undefined;
+      setMessage(err?.message || 'Account creation failed. Please verify your information and try again.');
       setIsLoading(false);
     }
   };

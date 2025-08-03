@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import MatchDetailsPage from '../components/MatchDetailsPage';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Match } from '../types';
+import { Match, scoreToString } from '../types';
 
 const MatchDetailPage: React.FC = () => {
   const { matchId } = useParams<{ matchId: string }>();
@@ -46,19 +46,40 @@ const MatchDetailPage: React.FC = () => {
 
           const convertedMatch: Match = {
             id: data.id,
-            challengerId: data.player1_id,
-            challengedId: data.player2_id,
-            player1: data.player1,
-            player2: data.player2,
+            tournament_id: data.tournament_id,
+            player1_id: data.player1_id,
+            player2_id: data.player2_id,
+            winner_id: data.winner_id,
+            score: scoreToString(data.score),
+            status: (data.status as Match['status']) || 'pending',
             date: data.date,
             location: data.location,
-            status: data.status,
+            match_number: data.match_number,
+            round: data.round,
+            summary: data.summary,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            challengerId: data.player1_id,
+            challengedId: data.player2_id,
             challengerScore, // Use the safely parsed score
             challengedScore, // Use the safely parsed score
             winner: data.winner_id,
-            winnerProfile: data.winner,
-            createdAt: data.created_at,
-            score: data.score // Pass the raw score object along
+            winnerProfile: data.winner ? {
+               username: data.winner.username,
+               user_id: data.winner_id || ''
+             } : undefined,
+            player1: data.player1 ? {
+               username: data.player1.username,
+               elo_rating: data.player1.elo_rating,
+               user_id: data.player1_id,
+               profile_picture_url: null
+             } : undefined,
+             player2: data.player2 ? {
+               username: data.player2.username,
+               elo_rating: data.player2.elo_rating,
+               user_id: data.player2_id,
+               profile_picture_url: null
+             } : undefined
           };
           
           setMatch(convertedMatch);

@@ -3,7 +3,7 @@ import { Search, User, Sparkles, Loader2, Trophy, BarChart3, AlertTriangle, Info
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
 import apiClient from '../lib/aws';
-import type { Database } from '../types/database';
+import type { Database } from '../types/supabase-generated';
 import PlayerAnalysisSection from '../components/ai-coach/PlayerAnalysisSection';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -89,8 +89,8 @@ const AICoachPage: React.FC = () => {
     fetchPlayerMatches(player.user_id);
   };
 
-  const calculateWinRate = (matchesPlayed: number, matchesWon: number) => {
-    if (matchesPlayed === 0) return '0.0';
+  const calculateWinRate = (matchesPlayed: number | null, matchesWon: number | null) => {
+    if (!matchesPlayed || matchesPlayed === 0 || !matchesWon) return '0.0';
     return ((matchesWon / matchesPlayed) * 100).toFixed(1);
   };
 

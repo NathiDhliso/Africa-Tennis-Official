@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
-import type { Database } from '../types/database';
+import type { Database } from '../types/supabase-generated';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -105,7 +105,7 @@ export const useAuthStore = create<AuthState>()(
       signUp: async (email: string, password: string, username: string) => {
         set({ loading: true });
         try {
-          const { error } = await supabase.auth.signUp({
+          const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -116,6 +116,34 @@ export const useAuthStore = create<AuthState>()(
           });
 
           if (error) throw error;
+
+          // Create profile immediately after signup
+          if (data.user) {
+            try {
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .insert({
+                  user_id: data.user.id,
+                  username: username,
+                  elo_rating: 1200,
+                  matches_played: 0,
+                  matches_won: 0,
+                  skill_level: 'beginner',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+              if (profileError) {
+                console.error('Error creating profile during signup:', profileError);
+              } else {
+                set({ profile: profileData as Profile });
+              }
+            } catch (profileError) {
+              console.error('Error creating profile during signup:', profileError);
+            }
+          }
 
           set({ loading: false });
         } catch (error: unknown) {
@@ -175,6 +203,30 @@ export const useAuthStore = create<AuthState>()(
             lastProfileFetch = Date.now();
           } catch (error: unknown) {
             console.error('Error fetching profile:', error);
+            // If profile doesn't exist, try to create it
+            if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
+              try {
+                const { data, error: insertError } = await supabase
+                  .from('profiles')
+                  .insert({
+                    user_id: user.id,
+                    username: user.user_metadata?.username || user.email?.split('@')[0] || 'Player',
+                    elo_rating: 1200,
+                    matches_played: 0,
+                    matches_won: 0,
+                    skill_level: 'beginner',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .select()
+                  .single();
+
+                if (insertError) throw insertError;
+                set({ profile: data as Profile });
+              } catch (createError) {
+                console.error('Error creating profile:', createError);
+              }
+            }
           } finally {
             profileFetchPromise = null;
           }

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../types/database';
+import type { Database } from '../types/supabase-generated';
 
 type TournamentInsert = Database['public']['Tables']['tournaments']['Insert'];
 type TournamentUpdate = Database['public']['Tables']['tournaments']['Update'];

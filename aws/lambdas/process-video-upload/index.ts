@@ -1,6 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
+import * as tf from '@tensorflow/tfjs-node';
+// Stream processing utilities
+import { PassThrough } from 'stream';
+import { createCanvas, loadImage } from 'canvas';
+import ffmpeg from 'fluent-ffmpeg';
 
 // CORS headers
 const corsHeaders = {

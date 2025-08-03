@@ -18,30 +18,9 @@ import apiClient from '../../lib/aws';
 import LoadingSpinner from '../LoadingSpinner';
 import ErrorDisplay from '../ErrorDisplay';
 import VideoTrackingPanel from '../video/VideoTrackingPanel';
-import type { Database } from '../../types/database';
-
-type Match = Database['public']['Tables']['matches']['Row'] & {
-  player1?: { username: string; elo_rating: number }
-  player2?: { username: string; elo_rating: number }
-};
-
-interface MatchScore {
-  sets: Array<{
-    player1_games: number;
-    player2_games: number;
-    games: Array<{
-      player1_points: number;
-      player2_points: number;
-      server_id: string;
-    }>;
-  }>;
-  current_game: {
-    player1: string;
-    player2: string;
-  };
-  server_id: string;
-  is_tiebreak: boolean;
-}
+import type { Json } from '../../types/supabase-generated';
+import type { Database } from '../../types/supabase-generated';
+import { Match, MatchScore } from '../../types';
 
 interface MatchScoreHistory {
   score: MatchScore;
@@ -67,6 +46,17 @@ const MatchScoring: React.FC<{
   onBack: () => void;
 }> = ({ match, onBack }) => {
   const [score, setScore] = useState<MatchScore | null>(null);
+
+  // Helper function to convert numeric points to tennis scoring
+  const formatTennisPoints = (points: number): string => {
+    switch (points) {
+      case 0: return '0';
+      case 1: return '15';
+      case 2: return '30';
+      case 3: return '40';
+      default: return points.toString();
+    }
+  };
   const [pointType, setPointType] = useState<string>('point_won');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<ErrorState>({
@@ -93,10 +83,9 @@ const MatchScoring: React.FC<{
     return {
       sets: [{
         player1_games: 0,
-        player2_games: 0,
-        games: []
+        player2_games: 0
       }],
-      current_game: { player1: '0', player2: '0' },
+      current_game: { player1_points: 0, player2_points: 0 },
       server_id: serverId,
       is_tiebreak: false,
     };
@@ -121,10 +110,6 @@ const MatchScoring: React.FC<{
           if (matchError) throw matchError;
           
           if (matchData) {
-            // Set player profiles
-            setPlayer1Profile(matchData.player1);
-            setPlayer2Profile(matchData.player2);
-            
             // Initialize score
             let initialScore: MatchScore;
             
@@ -134,7 +119,7 @@ const MatchScoring: React.FC<{
                 if (typeof matchData.score === 'string') {
                   initialScore = JSON.parse(matchData.score);
                 } else {
-                  initialScore = matchData.score as MatchScore;
+                  initialScore = matchData.score as unknown as MatchScore;
                 }
                 
                 // Validate the score structure
@@ -169,8 +154,9 @@ const MatchScoring: React.FC<{
 
             if (eventData && eventData.length > 0) {
               const videos = eventData
-                .filter(event => event.metadata && event.metadata.video_url)
-                .map(event => event.metadata.video_url);
+                .filter(event => event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) && 'video_url' in event.metadata)
+                .map(event => (event.metadata as any).video_url)
+                .filter(url => typeof url === 'string');
               setSavedVideos(videos);
             }
           }
@@ -301,7 +287,7 @@ const MatchScoring: React.FC<{
         if (data) {
           const updatedScore = typeof data === 'string'
             ? JSON.parse(data)
-            : data as MatchScore;
+            : data as unknown as MatchScore;
             
           setScore(updatedScore);
           scoreRef.current = updatedScore;
@@ -347,7 +333,7 @@ const MatchScoring: React.FC<{
         const { error: updateError } = await supabase
           .from('matches')
           .update({ 
-            score: previousScore,
+            score: previousScore as unknown as Json,
             updated_at: new Date().toISOString()
           })
           .eq('id', match.id);
@@ -504,7 +490,7 @@ const MatchScoring: React.FC<{
   };
 
   const dismissError = () => {
-    setError({...error, visible: false});
+    setError(prev => ({...prev, visible: false}));
   };
 
   if (isLoading) {
@@ -654,7 +640,7 @@ const MatchScoring: React.FC<{
               
               {/* Current Game */}
               <div className={`text-3xl font-bold font-mono transition-all duration-500 ease-in-out ${lastPointPlayerId === match.player1_id ? 'text-success-green scale-125' : ''}`}>
-                {score.current_game.player1}
+                {formatTennisPoints(score.current_game.player1_points)}
               </div>
             </div>
             
@@ -666,23 +652,21 @@ const MatchScoring: React.FC<{
                   Tiebreak
                 </div>
               ) : (
-                score.current_game.player1 === '40' && score.current_game.player2 === '40' ? (
-                  <div className="text-sm bg-accent-yellow bg-opacity-20 text-accent-yellow px-3 py-1 rounded-full">
-                    Deuce
-                  </div>
-                ) : (
-                  score.current_game.player1 === 'AD' ? (
+                score.current_game.player1_points >= 3 && score.current_game.player2_points >= 3 ? (
+                  score.current_game.player1_points === score.current_game.player2_points ? (
+                    <div className="text-sm bg-accent-yellow bg-opacity-20 text-accent-yellow px-3 py-1 rounded-full">
+                      Deuce
+                    </div>
+                  ) : score.current_game.player1_points > score.current_game.player2_points ? (
                     <div className="text-sm bg-quantum-cyan bg-opacity-20 text-quantum-cyan px-3 py-1 rounded-full">
                       Advantage {match.player1?.username}
                     </div>
                   ) : (
-                    score.current_game.player2 === 'AD' ? (
-                      <div className="text-sm bg-quantum-cyan bg-opacity-20 text-quantum-cyan px-3 py-1 rounded-full">
-                        Advantage {match.player2?.username}
-                      </div>
-                    ) : null
+                    <div className="text-sm bg-quantum-cyan bg-opacity-20 text-quantum-cyan px-3 py-1 rounded-full">
+                      Advantage {match.player2?.username}
+                    </div>
                   )
-                )
+                ) : null
               )}
             </div>
             
@@ -712,7 +696,7 @@ const MatchScoring: React.FC<{
               
               {/* Current Game */}
               <div className={`text-3xl font-bold font-mono transition-all duration-500 ease-in-out ${lastPointPlayerId === match.player2_id ? 'text-success-green scale-125' : ''}`}>
-                {score.current_game.player2}
+                {formatTennisPoints(score.current_game.player2_points)}
               </div>
             </div>
           </div>

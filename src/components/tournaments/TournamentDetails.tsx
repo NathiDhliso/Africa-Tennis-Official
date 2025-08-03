@@ -5,18 +5,19 @@ import LoadingSpinner from '../LoadingSpinner'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../lib/aws'
 import ErrorDisplay from '../ErrorDisplay'
-import type { Database } from '../../types/database'
+import type { Database } from '../../types/supabase-generated'
+import { scoreToString, Match } from '../../types'
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'] & {
-  organizer?: { username: string; elo_rating: number }
+  organizer?: { username: string; elo_rating: number | null }
 }
 type TournamentParticipant = Database['public']['Tables']['tournament_participants']['Row'] & {
-  player?: { username: string; elo_rating: number }
+  player?: { username: string; elo_rating: number | null }
 }
-type Match = Database['public']['Tables']['matches']['Row'] & {
-  player1?: { username: string }
-  player2?: { username: string }
-  winner?: { username: string }
+type DatabaseMatch = Database['public']['Tables']['matches']['Row'] & {
+  player1?: { username: string; elo_rating: number | null } | null
+  player2?: { username: string; elo_rating: number | null } | null
+  winner?: { username: string; elo_rating: number | null } | null
 }
 
 interface TournamentDetailsProps {
@@ -58,7 +59,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   useEffect(() => {
     const fetchTournamentDetails = async () => {
       setLoading(true)
-      setError({...error, visible: false})
+      setError(prev => ({...prev, visible: false}))
       try {
         // Fetch tournament data
         const { data: tournamentData, error: tournamentError } = await supabase
@@ -100,15 +101,50 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
           .from('matches')
           .select(`
             *,
-            player1:profiles!matches_player1_id_fkey(username),
-            player2:profiles!matches_player2_id_fkey(username),
-            winner:profiles!matches_winner_id_fkey(username)
+            player1:profiles!matches_player1_id_fkey(username, elo_rating),
+            player2:profiles!matches_player2_id_fkey(username, elo_rating),
+            winner:profiles!matches_winner_id_fkey(username, elo_rating)
           `)
           .eq('tournament_id', tournamentId)
           .order('date', { ascending: true })
 
         if (matchesError) throw matchesError
-        setMatches(matchesData || [])
+        
+        // Convert database matches to application matches
+        const matches: Match[] = (matchesData || []).map((dbMatch: DatabaseMatch) => ({
+          id: dbMatch.id,
+          tournament_id: dbMatch.tournament_id,
+          player1_id: dbMatch.player1_id,
+          player2_id: dbMatch.player2_id,
+          winner_id: dbMatch.winner_id,
+          score: scoreToString(dbMatch.score),
+          status: (dbMatch.status as Match['status']) || 'pending',
+          date: dbMatch.date,
+          location: dbMatch.location,
+          match_number: dbMatch.match_number,
+          round: dbMatch.round,
+          summary: dbMatch.summary,
+          created_at: dbMatch.created_at,
+          updated_at: dbMatch.updated_at,
+          player1: dbMatch.player1 ? {
+            username: dbMatch.player1.username,
+            elo_rating: dbMatch.player1.elo_rating || 1200,
+            user_id: '',
+            profile_picture_url: null
+          } : undefined,
+          player2: dbMatch.player2 ? {
+            username: dbMatch.player2.username,
+            elo_rating: dbMatch.player2.elo_rating || 1200,
+            user_id: '',
+            profile_picture_url: null
+          } : undefined,
+          winner: dbMatch.winner ? {
+            username: dbMatch.winner.username,
+            user_id: ''
+          } : null
+        }));
+        
+        setMatches(matches)
       } catch (error: any) {
         console.error('Error fetching tournament details:', error)
         setError({
@@ -162,7 +198,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   const handleRegister = async () => {
     if (!user || !tournament) return
     setIsRegistering(true)
-    setError({...error, visible: false})
+    setError(prev => ({...prev, visible: false}))
 
     try {
       // Check if tournament is full
@@ -202,7 +238,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   const handleUnregister = async () => {
     if (!user || !tournament) return
     setIsUnregistering(true)
-    setError({...error, visible: false})
+    setError(prev => ({...prev, visible: false}))
 
     try {
       // Check if tournament is still open for registration
@@ -236,7 +272,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   const handleCloseRegistration = async () => {
     if (!tournament) return
     setIsClosingRegistration(true)
-    setError({...error, visible: false})
+    setError(prev => ({...prev, visible: false}))
 
     try {
       // Update tournament status to registration_closed
@@ -269,7 +305,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   const handleGenerateBracket = async () => {
     if (!tournament) return
     setIsGeneratingBracket(true)
-    setError({...error, visible: false})
+    setError(prev => ({...prev, visible: false}))
     setBracketGenerationSuccess(false)
 
     try {
@@ -338,8 +374,11 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       
       if (error) throw error
       
-      if (!data.success) {
-        throw new Error(data.error || 'We encountered an issue starting the tournament. Please try again or contact support if the problem persists.')
+      if (!data || (typeof data === 'object' && 'success' in data && !data.success)) {
+        const errorMessage = (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') 
+          ? data.error 
+          : 'We encountered an issue starting the tournament. Please try again or contact support if the problem persists.'
+        throw new Error(errorMessage)
       }
       
       setBracketGenerationSuccess(true)
@@ -363,7 +402,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   }
 
   const dismissError = () => {
-    setError({...error, visible: false});
+    setError(prev => ({...prev, visible: false}));
   };
 
   const getStatusColor = (status: string) => {
@@ -451,8 +490,8 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
         </div>
         
         <div className="flex flex-wrap items-center gap-4 mb-4">
-          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(tournament.status)}`}>
-            {formatStatus(tournament.status)}
+          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(tournament.status || 'pending')}`}>
+            {formatStatus(tournament.status || 'pending')}
             {isTournamentFull && tournament.status === 'registration_open' && ' (Full)'}
           </span>
           <div className="flex items-center text-sm" style={{ color: 'var(--text-subtle)' }}>
@@ -469,7 +508,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
           </div>
           <div className="flex items-center text-sm" style={{ color: 'var(--text-subtle)' }}>
             <Trophy className="h-4 w-4 mr-2" />
-            <span className="capitalize">{tournament.format.replace('_', ' ')} format</span>
+            <span className="capitalize">{tournament.format?.replace('_', ' ') || 'Unknown'} format</span>
           </div>
         </div>
         
@@ -639,7 +678,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span style={{ color: 'var(--text-subtle)' }}>Format:</span>
-                    <span className="font-medium capitalize" style={{ color: 'var(--text-standard)' }}>{tournament.format.replace('_', ' ')}</span>
+                    <span className="font-medium capitalize" style={{ color: 'var(--text-standard)' }}>{tournament.format?.replace('_', ' ') || 'Unknown'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span style={{ color: 'var(--text-subtle)' }}>Organizer:</span>
@@ -858,7 +897,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
                           {participant.player?.elo_rating}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--text-subtle)' }}>
-                          {new Date(participant.registered_at).toLocaleDateString()}
+                          {participant.registered_at ? new Date(participant.registered_at).toLocaleDateString() : 'Unknown'}
                         </td>
                       </tr>
                     ))}
@@ -994,7 +1033,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
                         {match.winner && (
                           <span className="ml-2" style={{ color: 'var(--success-green)' }}>
                             <Award className="inline-block h-4 w-4 mr-1" />
-                            {match.winner.username} won
+                            {typeof match.winner === 'object' && match.winner.username ? match.winner.username : 'Winner'} won
                           </span>
                         )}
                       </div>

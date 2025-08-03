@@ -24,7 +24,9 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     define: {
+      global: 'globalThis',
       module: {}, // Shim for long.js UMD build used by TensorFlow
+      require: 'undefined', // Prevent require usage in browser
     },
     server: {
       host: true,
@@ -74,11 +76,7 @@ export default defineConfig(({ mode }) => {
         '@tanstack/react-query',
       ],
       exclude: [
-        '@tensorflow/tfjs', 
-        '@tensorflow/tfjs-backend-webgl',
-        '@tensorflow/tfjs-backend-cpu',
-        '@tensorflow-models/pose-detection',
-        '@tensorflow-models/coco-ssd'
+        // TensorFlow dependencies removed - using backend processing
       ] 
     }
   }

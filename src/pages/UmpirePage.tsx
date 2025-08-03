@@ -13,13 +13,22 @@ import { useAuthStore } from '../stores/authStore';
 import MatchScoring from '../components/matches/MatchScoring';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Link } from 'react-router-dom';
-import type { Database } from '../types/database';
+import type { Database } from '../types/supabase-generated';
+import { scoreToString, Match } from '../types';
 
-type Tournament = Database['public']['Tables']['tournaments']['Row'];
-type Match = Database['public']['Tables']['matches']['Row'] & {
-  player1?: Database['public']['Tables']['profiles']['Row'];
-  player2?: Database['public']['Tables']['profiles']['Row'];
-  tournament?: Database['public']['Tables']['tournaments']['Row'];
+type Tournament = {
+  id: string;
+  name: string;
+  status: string | null;
+  organizer_id: string;
+  start_date: string;
+  end_date: string;
+  location: string;
+};
+type DatabaseMatch = Database['public']['Tables']['matches']['Row'] & {
+  player1?: { user_id: string; username: string; elo_rating: number | null } | null;
+  player2?: { user_id: string; username: string; elo_rating: number | null } | null;
+  tournament?: { id: string; name: string } | null;
 };
 
 type ErrorState = {
@@ -32,29 +41,23 @@ type ErrorState = {
 const UmpirePage: React.FC = () => {
   const [tournaments, setTournaments] = React.useState<Tournament[]>([]);
   const [matches, setMatches] = React.useState<Match[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<ErrorState>({ visible: false, title: '', message: '', type: 'error' });
   const [selectedMatch, setSelectedMatch] = React.useState<Match | null>(null);
   const [isLoadingTournaments, setIsLoadingTournaments] = React.useState(false);
   const [isLoadingMatches, setIsLoadingMatches] = React.useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = React.useState(false);
 
   const { user } = useAuthStore();
 
-  React.useEffect(() => {
-    loadTournaments();
-  }, [user]);
-
-  React.useEffect(() => {
-    if (tournaments.length > 0) {
-      loadMatches();
-    }
-  }, [tournaments]);
-
-  const loadTournaments = async () => {
+  const loadTournaments = React.useCallback(async () => {
     if (!user || isLoadingTournaments) return;
     
     setIsLoadingTournaments(true);
-    setIsLoading(true);
+    // Only set main loading on initial load
+    if (!hasInitialLoad) {
+      setIsLoading(true);
+    }
     
     try {
       const userId = user.id;
@@ -75,6 +78,7 @@ const UmpirePage: React.FC = () => {
       if (error) throw error;
       
       setTournaments(data || []);
+      setHasInitialLoad(true);
     } catch (error: any) {
       if (error.name !== 'AbortError') {
         console.error('Error loading tournaments:', error);
@@ -89,9 +93,9 @@ const UmpirePage: React.FC = () => {
       setIsLoadingTournaments(false);
       setIsLoading(false);
     }
-  };
+  }, [user, isLoadingTournaments, hasInitialLoad]);
 
-  const loadMatches = async () => {
+  const loadMatches = React.useCallback(async () => {
     if (isLoadingMatches || tournaments.length === 0) return;
     
     setIsLoadingMatches(true);
@@ -120,7 +124,41 @@ const UmpirePage: React.FC = () => {
       
       if (error) throw error;
       
-      setMatches(data || []);
+      // Convert database matches to application matches
+      const matches: Match[] = (data || []).map((dbMatch: DatabaseMatch) => ({
+        id: dbMatch.id,
+        tournament_id: dbMatch.tournament_id,
+        player1_id: dbMatch.player1_id,
+        player2_id: dbMatch.player2_id,
+        winner_id: dbMatch.winner_id,
+        score: scoreToString(dbMatch.score),
+        status: (dbMatch.status as Match['status']) || 'pending',
+        date: dbMatch.date,
+        location: dbMatch.location,
+        match_number: dbMatch.match_number,
+        round: dbMatch.round,
+        summary: dbMatch.summary,
+        created_at: dbMatch.created_at,
+        updated_at: dbMatch.updated_at,
+        player1: dbMatch.player1 ? {
+           username: dbMatch.player1.username,
+           elo_rating: dbMatch.player1.elo_rating,
+           user_id: dbMatch.player1.user_id,
+           profile_picture_url: null
+         } : undefined,
+         player2: dbMatch.player2 ? {
+           username: dbMatch.player2.username,
+           elo_rating: dbMatch.player2.elo_rating,
+           user_id: dbMatch.player2.user_id,
+           profile_picture_url: null
+         } : undefined,
+        tournament: dbMatch.tournament ? {
+          id: dbMatch.tournament.id,
+          name: dbMatch.tournament.name
+        } : undefined
+      }));
+      
+      setMatches(matches);
     } catch (error: any) {
       if (error.name !== 'AbortError') {
         console.error('Error loading matches:', error);
@@ -134,20 +172,32 @@ const UmpirePage: React.FC = () => {
     } finally {
       setIsLoadingMatches(false);
     }
-  };
+  }, [tournaments, isLoadingMatches]);
+
+  React.useEffect(() => {
+    loadTournaments();
+  }, [loadTournaments]);
+
+  React.useEffect(() => {
+    if (tournaments.length > 0) {
+      loadMatches();
+    }
+  }, [tournaments.length, loadMatches]);
+
+
 
   const handleMatchSelect = (match: Match) => {
     setSelectedMatch(match);
   };
 
-  const handleBackToList = () => {
+  const handleBackToList = React.useCallback(() => {
     setSelectedMatch(null);
     loadMatches(); // Refresh matches when returning from scoring
-  };
+  }, [loadMatches]);
 
-  const dismissError = () => {
-    setError({ ...error, visible: false });
-  };
+  const dismissError = React.useCallback(() => {
+    setError(prev => ({ ...prev, visible: false }));
+  }, []);
 
   if (selectedMatch) {
     return (

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, MapPin, Users, Search, Clock, Target, User } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
-import type { Database } from '../../types/database';
+import type { Database } from '../../types/supabase-generated';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -69,12 +69,12 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, username, elo_rating, skill_level')
+        .select('user_id, username, elo_rating, matches_played, matches_won, skill_level, bio, profile_picture_url, created_at, updated_at, player_style_analysis')
         .neq('user_id', user.id)
         .order('elo_rating', { ascending: false });
         
       if (error) throw error;
-      setAvailablePlayers(data || []);
+      setAvailablePlayers((data || []) as Profile[]);
     } catch (error) {
       console.error('Error loading players:', error);
     }

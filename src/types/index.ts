@@ -1,21 +1,72 @@
-// Import Json type from supabase
-import type { Json } from './supabase';
+// Import database types from supabase
+import type { Json, Database } from './supabase';
 
-// Database-aligned types
-export type DatabaseProfile = {
-  user_id: string;
-  username: string;
-  bio: string | null;
-  created_at: string | null;
-  elo_rating: number | null;
-  matches_played: number | null;
-  matches_won: number | null;
-  player_style_analysis: string | null;
-  profile_picture_url: string | null;
-  skill_level: string | null;
-  updated_at: string | null;
-};
+// Direct database table types
+export type DbMatch = Database['public']['Tables']['matches']['Row'];
+export type DbMatchInsert = Database['public']['Tables']['matches']['Insert'];
+export type DbMatchUpdate = Database['public']['Tables']['matches']['Update'];
 
+export type DbProfile = Database['public']['Tables']['profiles']['Row'];
+export type DbProfileInsert = Database['public']['Tables']['profiles']['Insert'];
+export type DbProfileUpdate = Database['public']['Tables']['profiles']['Update'];
+
+export type DbTournament = Database['public']['Tables']['tournaments']['Row'];
+export type DbTournamentInsert = Database['public']['Tables']['tournaments']['Insert'];
+export type DbTournamentUpdate = Database['public']['Tables']['tournaments']['Update'];
+
+export type DbTournamentParticipant = Database['public']['Tables']['tournament_participants']['Row'];
+export type DbTournamentParticipantInsert = Database['public']['Tables']['tournament_participants']['Insert'];
+
+export type DbMatchEvent = Database['public']['Tables']['match_events']['Row'];
+export type DbMatchEventInsert = Database['public']['Tables']['match_events']['Insert'];
+
+export type DbMatchHighlight = Database['public']['Tables']['match_highlights']['Row'];
+export type DbMatchHighlightInsert = Database['public']['Tables']['match_highlights']['Insert'];
+
+// Score types for tennis matches
+export interface MatchScore {
+  sets: Array<{ player1_games: number; player2_games: number }>;
+  current_game: { player1_points: number; player2_points: number };
+  server_id: string;
+  is_tiebreak: boolean;
+}
+
+// Type guards for safe type conversion
+export function isMatchScore(score: Json | null): score is MatchScore & Json {
+  if (!score || typeof score !== 'object' || Array.isArray(score)) return false;
+  const s = score as Record<string, unknown>;
+  return Array.isArray(s.sets) && 
+         typeof s.current_game === 'object' && 
+         typeof s.server_id === 'string' &&
+         typeof s.is_tiebreak === 'boolean';
+}
+
+export function scoreToString(score: Json | null): string {
+  if (!score) return 'No score';
+  if (typeof score === 'string') return score;
+  if (isMatchScore(score)) {
+    return score.sets.map(set => `${set.player1_games}-${set.player2_games}`).join(', ');
+  }
+  return 'Invalid score';
+}
+
+// Extended types with joined data (for queries with relationships)
+export interface MatchWithPlayers extends DbMatch {
+  player1?: { username: string; elo_rating: number | null; user_id: string } | null;
+  player2?: { username: string; elo_rating: number | null; user_id: string } | null;
+  tournament?: { id: string; name: string } | null;
+  winner?: { username: string; user_id: string } | null;
+}
+
+export interface TournamentWithOrganizer extends DbTournament {
+  organizer?: { username: string; user_id: string } | null;
+}
+
+export interface TournamentParticipantWithPlayer extends DbTournamentParticipant {
+  player: { username: string; elo_rating: number | null; user_id: string };
+}
+
+// Application-level types (for components)
 export interface User {
   id: string;
   email: string;
@@ -25,34 +76,50 @@ export interface User {
   location?: string;
   bio?: string;
   profilePicture?: string | null;
-  skillLevel?: 'Beginner' | 'Intermediate' | 'Advanced';
+  skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   rating?: number;
   matchesPlayed?: number;
   matchesWon?: number;
   isOnboarded?: boolean;
 }
 
-export interface TennisScore {
-  player1_sets: number;
-  player2_sets: number;
-  player1_games: number;
-  player2_games: number;
-  player1_points: number;
-  player2_points: number;
-  current_set: number;
-  current_game: number;
-  serving_player?: 'player1' | 'player2';
+// Application interface that aligns with database
+export interface Profile {
+  user_id: string;
+  username: string;
+  elo_rating: number;
+  matches_played: number;
+  matches_won: number;
+  skill_level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  bio: string | null;
+  profile_picture_url: string | null;
+  created_at: string;
+  updated_at: string;
+  player_style_analysis: string | null;
 }
 
-// Database-aligned Match type
-export type DatabaseMatch = {
+// Extended match status to cover additional workflow states
+export type MatchStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'in_progress'
+  | 'completed'
+  | 'declined'
+  | 'cancelled';
+
+// Match interface for application use
+export interface Match {
   id: string;
   tournament_id: string | null;
   player1_id: string;
   player2_id: string;
   winner_id: string | null;
-  score: Json | null; // Json type from database
-  status: string | null;
+  /**
+   * Score can be either a formatted string (e.g. "6-4, 7-5") or a JSON object
+   * containing set-by-set details. Components check for both shapes.
+   */
+  score: string | MatchScore | null;
+  status: MatchStatus;
   date: string;
   location: string;
   match_number: number | null;
@@ -60,146 +127,146 @@ export type DatabaseMatch = {
   summary: string | null;
   created_at: string | null;
   updated_at: string | null;
-};
 
-export interface Match {
-  id: string;
-  challengerId?: string;
-  challengedId?: string;
-  tournament_id?: string | null;
-  player1_id?: string;
-  player2_id?: string;
-  player1?: { username: string; elo_rating: number | null };
-  player2?: { username: string; elo_rating: number | null };
-  date: string;
-  location: string;
-  status?: 'pending' | 'confirmed' | 'completed' | 'declined' | 'in_progress' | 'cancelled' | null;
-  challengerScore?: number;
-  challengedScore?: number;
-  winner?: string | null; // winnerId
-  winner_id?: string | null;
-  winnerProfile?: { username: string } | null;
-  createdAt?: string | null;
-  created_at?: string | null;
-  detailedStatsId?: string; // Link to detailed statistics
-  score?: TennisScore | Json | null; // Can be either TennisScore interface or Json from database
-  scoreDisplay?: string | null; // Formatted score string for display
-  tournamentId?: string | null; // ID of the tournament this match belongs to
-  match_number?: number | null;
-  round?: number | null;
-  summary?: string | null;
-  updated_at?: string | null;
+  /* ------------------------------------
+   *  Additional, non-DB fields used in UI
+   * ---------------------------------- */
+  challengerId?: string; // alias for player1_id in UI components
+  challengedId?: string; // alias for player2_id in UI components
+  challengerScore?: number | null;
+  challengedScore?: number | null;
+  detailedStatsId?: string | null;
+  scoreDisplay?: string | null;
+  tournamentId?: string | null; // camel-case alias
+
+  // Extended relational data
+  player1?: { username: string; elo_rating: number | null; user_id: string; profile_picture_url?: string | null };
+  player2?: { username: string; elo_rating: number | null; user_id: string; profile_picture_url?: string | null };
+  winnerProfile?: { username: string; user_id: string };
+  tournament?: { id: string; name: string };
+  winner?: { username: string; user_id: string } | string | null;
 }
 
-// Database-aligned Tournament type
-export type DatabaseTournament = {
+// Tournament status type
+export type TournamentStatus = 'registration_open' | 'registration_closed' | 'in_progress' | 'completed';
+
+// Tournament format type
+export type TournamentFormat = 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
+
+// Tournament interface for application use
+export interface Tournament {
   id: string;
   name: string;
   description: string;
   organizer_id: string;
   start_date: string;
   end_date: string;
-  format: string | null;
+  // Camel-case aliases used in some components
+  startDate?: string;
+  endDate?: string;
+  format: TournamentFormat;
   location: string;
   max_participants: number;
-  status: string | null;
+  // Camel-case alias
+  maxParticipants?: number;
+  status: TournamentStatus | 'registration_closed';
   brackets_generated: boolean | null;
   created_at: string | null;
   updated_at: string | null;
   entry_fee: number | null;
   prize_pool: number | null;
-};
-
-export interface Tournament {
-  id: string;
-  name: string;
-  description: string;
-  organizerId?: string;
-  organizer_id?: string;
-  registrationDeadline?: string;
-  startDate?: string;
-  start_date?: string;
-  endDate?: string;
-  end_date?: string;
-  format?: 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss' | string | null;
-  location: string;
-  maxParticipants?: number;
-  max_participants?: number;
-  umpireId?: string;
-  status?: 'registration_open' | 'registration_closed' | 'in_progress' | 'completed' | string | null;
-  winnerId?: string;
-  createdAt?: string;
-  created_at?: string | null;
-  updated_at?: string | null;
+  // Extended fields
+  organizer?: { username: string; user_id: string };
   participantCount?: number;
   isRegistered?: boolean;
-  brackets_generated?: boolean | null;
-  entry_fee?: number | null;
-  prize_pool?: number | null;
-  organizer?: { username: string };
 }
 
-// Database-aligned TournamentParticipant type
-export type DatabaseTournamentParticipant = {
+// Tournament participant interface
+export interface TournamentParticipant {
   id: string;
   tournament_id: string;
   player_id: string;
   seed: number | null;
-  registered_at: string | null;
-};
-
-export interface TournamentParticipant {
-  id: string;
-  tournamentId?: string;
-  tournament_id?: string;
-  playerId?: string;
-  player_id?: string;
-  seed?: number | null;
-  registeredAt?: string | null;
-  registered_at?: string | null;
-  player?: { username: string; elo_rating: number | null };
+  registered_at: string;
+  // Extended fields
+  player: { username: string; elo_rating: number | null; user_id: string };
 }
 
-export interface TournamentMatch {
-  id: string;
-  tournamentId: string;
-  round: number;
-  matchNumber: number;
-  player1Id?: string;
-  player2Id?: string;
-  winnerId?: string;
-  score?: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  scheduledDate?: string;
-  location: string;
-  umpireId: string;
-  detailedStatsId?: string; // Link to detailed statistics
+// Conversion functions from database types to application types
+export function dbMatchToMatch(dbMatch: MatchWithPlayers): Match {
+  return {
+    id: dbMatch.id,
+    tournament_id: dbMatch.tournament_id,
+    player1_id: dbMatch.player1_id,
+    player2_id: dbMatch.player2_id,
+    winner_id: dbMatch.winner_id,
+    score: scoreToString(dbMatch.score),
+    status: (dbMatch.status as MatchStatus) || 'pending',
+    date: dbMatch.date,
+    location: dbMatch.location,
+    match_number: dbMatch.match_number,
+    round: dbMatch.round,
+    summary: dbMatch.summary,
+    created_at: dbMatch.created_at,
+    updated_at: dbMatch.updated_at,
+    player1: dbMatch.player1 || undefined,
+    player2: dbMatch.player2 || undefined,
+    tournament: dbMatch.tournament || undefined,
+    winner: dbMatch.winner || undefined,
+  };
 }
 
-// Database-aligned VideoHighlight type
-export type DatabaseVideoHighlight = {
-  id: string;
-  match_id: string | null;
-  created_by: string;
-  video_url: string;
-  type: string;
-  timestamp: string;
-  description: string | null;
-  created_at: string | null;
-};
-
-export interface VideoHighlight {
-  id: string;
-  match_id: string;
-  matchId?: string;
-  created_by: string;
-  video_url: string;
-  type: string;
-  timestamp: string;
-  description: string | null;
-  created_at: string | null;
+export function dbTournamentToTournament(dbTournament: TournamentWithOrganizer): Tournament {
+  return {
+    id: dbTournament.id,
+    name: dbTournament.name,
+    description: dbTournament.description,
+    organizer_id: dbTournament.organizer_id,
+    start_date: dbTournament.start_date,
+    end_date: dbTournament.end_date,
+    format: (dbTournament.format as TournamentFormat) || 'single_elimination',
+    location: dbTournament.location,
+    max_participants: dbTournament.max_participants,
+    status: (dbTournament.status as TournamentStatus) || 'registration_open',
+    brackets_generated: dbTournament.brackets_generated,
+    created_at: dbTournament.created_at,
+    updated_at: dbTournament.updated_at,
+    entry_fee: dbTournament.entry_fee,
+    prize_pool: dbTournament.prize_pool,
+    organizer: dbTournament.organizer || undefined,
+  };
 }
 
+export function dbProfileToProfile(dbProfile: DbProfile): Profile {
+  return {
+    user_id: dbProfile.user_id,
+    username: dbProfile.username,
+    elo_rating: dbProfile.elo_rating || 1200,
+    matches_played: dbProfile.matches_played || 0,
+    matches_won: dbProfile.matches_won || 0,
+    skill_level: (dbProfile.skill_level as Profile['skill_level']) || 'beginner',
+    bio: dbProfile.bio,
+    profile_picture_url: dbProfile.profile_picture_url,
+    created_at: dbProfile.created_at || new Date().toISOString(),
+    updated_at: dbProfile.updated_at || new Date().toISOString(),
+    player_style_analysis: dbProfile.player_style_analysis,
+  };
+}
+
+export function dbTournamentParticipantToTournamentParticipant(
+  dbParticipant: TournamentParticipantWithPlayer
+): TournamentParticipant {
+  return {
+    id: dbParticipant.id,
+    tournament_id: dbParticipant.tournament_id,
+    player_id: dbParticipant.player_id,
+    seed: dbParticipant.seed,
+    registered_at: dbParticipant.registered_at || new Date().toISOString(),
+    player: dbParticipant.player,
+  };
+}
+
+// Legacy types for backward compatibility (will be gradually phased out)
 export interface AuthContextType {
   user: User | null;
   login: (email: string) => Promise<void>;
@@ -214,7 +281,6 @@ export interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-// New interfaces for detailed match statistics
 export interface MatchEvent {
   id: string;
   matchId: string;
@@ -238,84 +304,21 @@ export interface MatchEvent {
     isMatchPoint?: boolean;
     shotType?: string;
     courtPosition?: string;
+    video_url?: string;
   };
 }
 
-export interface DetailedMatchStatistics {
-  id: string;
-  matchId: string;
-  player1Id: string;
-  player2Id: string;
-  startTime: number;
-  endTime?: number;
-  duration?: number; // in minutes
-  
-  // Court coverage and possession
-  possession: {
-    player1: number; // percentage
-    player2: number; // percentage
-  };
-  
-  // Shot statistics
-  shots: {
-    player1: number;
-    player2: number;
-  };
-  
-  // Serving statistics
-  aces: {
-    player1: number;
-    player2: number;
-  };
-  
-  doubleFaults: {
-    player1: number;
-    player2: number;
-  };
-  
-  // Break point statistics
+export interface MatchStatistics {
+  possession: { user: number; opponent: number };
+  shots: { user: number; opponent: number };
+  aces: { user: number; opponent: number };
+  doubleFaults: { user: number; opponent: number };
   breakPoints: {
-    player1: { won: number; total: number };
-    player2: { won: number; total: number };
+    user: { won: number; total: number };
+    opponent: { won: number; total: number };
   };
-  
-  // Shot quality
-  winners: {
-    player1: number;
-    player2: number;
-  };
-  
-  unforcedErrors: {
-    player1: number;
-    player2: number;
-  };
-  
-  // Game flow
-  gamesWon: {
-    player1: number;
-    player2: number;
-  };
-  
-  setsWon: {
-    player1: number;
-    player2: number;
-  };
-  
-  // Additional metrics
-  longestRally?: number;
-  totalRallies?: number;
-  averageRallyLength?: number;
-  
-  // Time-based statistics
-  timeInPoints?: number; // total time spent in actual point play
-  timeInBreaks?: number; // time between points/games
-  
-  // Momentum tracking
-  momentumShifts?: Array<{
-    timestamp: number;
-    playerId: string;
-    reason: string;
-  }>;
+  winners: { user: number; opponent: number };
+  unforcedErrors: { user: number; opponent: number };
 }
 
 export interface MatchTimeline {
@@ -333,4 +336,29 @@ export interface MatchHighlight {
   timestamp: string;
   type: 'ace' | 'winner' | 'break_point' | 'rally' | 'comeback';
   videoUrl?: string;
+}
+
+export interface PlayerProfile {
+  user_id: string;
+  username: string;
+  elo_rating: number | null;
+  profile_picture_url?: string | null;
+}
+
+// Video processing types
+export interface VideoProcessingOptions {
+  enableAI: boolean;
+  analysisFps: number;
+  maxFrames: number;
+  duration: number;
+}
+
+export interface VideoAnalysisResult {
+  success: boolean;
+  data?: {
+    videoUrl: string;
+    analysisData: unknown;
+    insights: string[];
+  };
+  error?: string;
 }

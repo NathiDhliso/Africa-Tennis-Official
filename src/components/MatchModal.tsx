@@ -47,7 +47,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
   const filterPlayers = useCallback(() => {
     const filtered = availablePlayers.filter((player: UserType) =>
       player.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      player.name.toLowerCase().includes(searchTerm.toLowerCase())
+      player.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredPlayers(filtered);
   }, [availablePlayers, searchTerm]);
@@ -186,12 +186,12 @@ const MatchModal: React.FC<MatchModalProps> = ({
                 <div className="match-selected-player">
                   <div className="match-player-info">
                     <div className="player-avatar">
-                      {getInitials(selectedPlayer.name)}
+                      {getInitials(selectedPlayer.name || selectedPlayer.username || 'Player')}
                     </div>
                     <div className="match-player-details">
-                      <div className="match-player-name">{selectedPlayer.name}</div>
-                      <div className={`rating-badge ${getRatingClass(selectedPlayer.skillLevel)}`}>
-                        {selectedPlayer.skillLevel} • Rating: {selectedPlayer.rating}
+                      <div className="match-player-name">{selectedPlayer.name || selectedPlayer.username}</div>
+                      <div className={`rating-badge ${getRatingClass(selectedPlayer.skillLevel || 'beginner')}`}>
+                        {selectedPlayer.skillLevel || 'beginner'} • Rating: {selectedPlayer.rating || 1200}
                       </div>
                     </div>
                   </div>
@@ -228,12 +228,12 @@ const MatchModal: React.FC<MatchModalProps> = ({
                         className="match-player-card"
                       >
                         <div className="player-avatar">
-                          {getInitials(player.name)}
+                          {getInitials(player.name || player.username || 'Player')}
                         </div>
                         <div className="match-player-details">
-                          <div className="match-player-name">{player.name}</div>
-                          <div className={`rating-badge ${getRatingClass(player.skillLevel)}`}>
-                            {player.skillLevel}
+                          <div className="match-player-name">{player.name || player.username}</div>
+                          <div className={`rating-badge ${getRatingClass(player.skillLevel || 'beginner')}`}>
+                            {player.skillLevel || 'beginner'}
                           </div>
                           <div className="match-player-stats">
                             <span>Rating: {player.rating}</span>

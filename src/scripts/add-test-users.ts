@@ -64,37 +64,37 @@ async function addTestUsers() {
     try {
       console.log(`Processing user: ${user.email}`);
       
-      // Check if user already exists in auth
-      const { data: existingUser } = await supabase.auth.admin.getUserByEmail(user.email);
+      // Create user in auth system
+      console.log(`Creating auth user: ${user.email}`);
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: user.email,
+        password: user.password,
+        email_confirm: true
+      });
       
-      if (existingUser) {
-        console.log(`User ${user.email} already exists in auth system. Skipping auth creation.`);
-      } else {
-        // Create user in auth system
-        console.log(`Creating auth user: ${user.email}`);
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: user.email,
-          password: user.password,
-          email_confirm: true
-        });
-        
-        if (authError) {
+      if (authError) {
+        // If user already exists, try to get existing user
+        if (authError.message.includes('already registered')) {
+          console.log(`User ${user.email} already exists in auth system.`);
+          // For existing users, we'll need to get the user ID differently
+          // Since we can't easily get by email, we'll skip this user
+          console.log(`Skipping ${user.email} - cannot get existing user ID without email lookup`);
+          continue;
+        } else {
           console.error(`Error creating auth user ${user.email}:`, authError);
           continue;
         }
-        
-        console.log(`Auth user created: ${authData.user.id}`);
       }
       
-      // Get user ID from email
-      const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(user.email);
-      
-      if (userError || !userData) {
-        console.error(`Error getting user ID for ${user.email}:`, userError);
+      if (!authData?.user) {
+        console.error(`No user data returned for ${user.email}`);
         continue;
       }
       
-      const userId = userData.user.id;
+      const userId = authData.user.id;
+      console.log(`Auth user created: ${userId}`);
+      
+      // userId is already set above
       
       // Check if profile already exists
       const { data: existingProfile, error: profileCheckError } = await supabase

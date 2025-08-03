@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Calendar, MapPin, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Sparkles, Loader2, Trophy, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../lib/aws'
-import type { Database } from '../../types/database'
-
-type Match = Database['public']['Tables']['matches']['Row'] & {
-  player1?: { username: string; elo_rating: number }
-  player2?: { username: string; elo_rating: number }
-  winner?: { username: string }
-}
+import type { Database } from '../../types/supabase-generated'
+import { Match } from '../../types'
 
 interface MatchDetailsProps {
   matchId: string
@@ -54,7 +49,29 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
           .single()
 
         if (matchError) throw matchError
-        setMatch(matchData)
+        
+        // Convert the match data to proper types
+        const convertedMatch: Match = {
+          ...matchData,
+          score: typeof matchData.score === 'string' ? matchData.score : JSON.stringify(matchData.score),
+          status: (matchData.status as Match['status']) || 'pending',
+          player1: matchData.player1 ? {
+            ...matchData.player1,
+            user_id: matchData.player1_id,
+            profile_picture_url: null
+          } : undefined,
+          player2: matchData.player2 ? {
+            ...matchData.player2,
+            user_id: matchData.player2_id,
+            profile_picture_url: null
+          } : undefined,
+          winner: matchData.winner ? {
+            ...matchData.winner,
+            user_id: matchData.winner_id || ''
+          } : null
+        };
+        
+        setMatch(convertedMatch)
         setSummary(matchData.summary)
 
         // Fetch player profiles
@@ -320,7 +337,7 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
                 {match.winner && (
                   <div className="mt-2 flex items-center justify-center text-sm font-medium" style={{ color: 'var(--success-green)' }}>
                     <Trophy className="h-4 w-4 mr-1" />
-                    {match.winner.username} won
+                    {typeof match.winner === 'object' && match.winner.username ? match.winner.username : 'Winner'} won
                   </div>
                 )}
               </div>

@@ -3,24 +3,47 @@ import { supabase } from '../lib/supabase';
 const API_BASE_URL = import.meta.env.VITE_AWS_API_ENDPOINT || 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod';
 
 export interface VideoProcessingOptions {
-  enableAI?: boolean;
+  matchId?: string;
+  highlightType?: string;
+  description?: string;
+  userId?: string;
   analysisFps?: number;
   maxFrames?: number;
-  duration?: number;
+  enableAI?: boolean;
 }
 
 export interface VideoProcessingResult {
-  success: boolean;
-  data?: {
-    videoUrl: string;
-    thumbnailUrl: string;
-    originalSize: number;
-    compressedSize: number;
-    compressionRatio: string;
-    analysis?: any;
-    processingTime: number;
+  videoUrl: string;
+  compressedSize?: number;
+  compressionRatio?: string;
+  analysisResult?: {
+    ballTracking: Array<{
+      timestamp: number;
+      position: { x: number; y: number };
+      speed: number;
+      inBounds: boolean;
+    }>;
+    playerPositions: Array<{
+      timestamp: number;
+      players: Array<{
+        id: string;
+        position: { x: number; y: number };
+        pose: any;
+      }>;
+    }>;
+    courtDetection: {
+      lines: any[];
+      regions: any;
+      confidence: number;
+    };
+    highlights: Array<{
+      startTime: number;
+      endTime: number;
+      type: string;
+      description: string;
+      confidence: number;
+    }>;
   };
-  error?: string;
 }
 
 export interface TennisAnalysisResult {
@@ -98,8 +121,6 @@ class VideoProcessingService {
    */
   async processVideoUpload(
     videoBlob: Blob,
-    matchId?: string,
-    userId?: string,
     options: VideoProcessingOptions = {}
   ): Promise<VideoProcessingResult> {
     try {
@@ -108,23 +129,36 @@ class VideoProcessingService {
       
       const response = await this.makeRequest('/video/process-upload', {
         videoData: videoBase64,
-        matchId,
-        userId,
+        matchId: options.matchId,
+        userId: options.userId,
+        highlightType: options.highlightType,
+        description: options.description,
         analysisOptions: {
-          enableAI: options.enableAI !== false, // Default to true
-          analysisFps: options.analysisFps || 2,
-          maxFrames: options.maxFrames || 60,
-          duration: options.duration || 0
+          enableAI: true,
+          analysisFps: options.analysisFps || 5,
+          maxFrames: options.maxFrames || 300
         }
       });
 
-      return response;
+      // Transform response to match expected interface
+      if (response.success && response.data) {
+        return {
+          videoUrl: response.data.videoUrl,
+          compressedSize: response.data.compressedSize,
+          compressionRatio: response.data.compressionRatio,
+          analysisResult: response.data.analysis ? {
+            ballTracking: response.data.analysis.ballTracking || [],
+            playerPositions: response.data.analysis.playerPositions || [],
+            courtDetection: response.data.analysis.courtDetection || { lines: [], regions: {}, confidence: 0 },
+            highlights: response.data.analysis.highlights || []
+          } : undefined
+        };
+      } else {
+        throw new Error(response.error || 'Video processing failed');
+      }
     } catch (error) {
       console.error('Video processing error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Video processing failed'
-      };
+      throw new Error(error instanceof Error ? error.message : 'Video processing failed');
     }
   }
 
@@ -204,17 +238,11 @@ class VideoProcessingService {
       // Step 1: Process and upload video
       const processingResult = await this.processVideoUpload(
         videoBlob,
-        matchId,
-        playerId,
         options
       );
 
-      if (!processingResult.success) {
-        return { processing: processingResult };
-      }
-
       // Step 2: Perform tennis analysis
-      const videoKey = processingResult.data?.videoUrl || '';
+      const videoKey = processingResult.videoUrl || '';
       const analysisResult = await this.analyzeTennisVideo(
         videoKey,
         matchId,
@@ -230,7 +258,7 @@ class VideoProcessingService {
         playerId,
         [analysisResult.data?.analysisKey || ''],
         matchId,
-        options.enableAI ? 'comprehensive' : 'basic'
+        (options.enableAI !== false) ? 'comprehensive' : 'basic'
       );
 
       return {
@@ -240,12 +268,7 @@ class VideoProcessingService {
       };
     } catch (error) {
       console.error('Complete video processing error:', error);
-      return {
-        processing: {
-          success: false,
-          error: error instanceof Error ? error.message : 'Complete video processing failed'
-        }
-      };
+      throw error;
     }
   }
 
@@ -351,4 +374,4 @@ class VideoProcessingService {
   }
 }
 
-export const videoProcessingService = new VideoProcessingService(); 
+export const videoProcessingService = new VideoProcessingService();

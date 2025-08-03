@@ -75,12 +75,12 @@ const RankingsPage: React.FC = () => {
         </div>
         
         <div className="rankings-controls">
-          <button
-            onClick={() => refetch()}
+        <button
+          onClick={() => refetch()}
             className="btn btn-primary"
-          >
-            Refresh Rankings
-          </button>
+        >
+          Refresh Rankings
+        </button>
         </div>
       </div>
 
@@ -96,31 +96,31 @@ const RankingsPage: React.FC = () => {
           </div>
           
           <div className="rankings-table-body">
-            {rankings.map((player: RankingPlayer) => (
+                {rankings.map((player: RankingPlayer) => (
               <div key={player.user_id} className="rankings-table-row">
                 <div className="rank-col">
                   <div className="rank-display">
-                    {getRankIcon(player.rank)}
-                  </div>
+                        {getRankIcon(player.rank)}
+                      </div>
                 </div>
                 <div className="player-col">
                   <div className="player-info">
-                    {player.profile_picture_url ? (
-                      <img
+                        {player.profile_picture_url ? (
+                          <img
                         className="player-avatar"
-                        src={player.profile_picture_url}
-                        alt=""
-                      />
-                    ) : (
+                            src={player.profile_picture_url}
+                            alt=""
+                          />
+                        ) : (
                       <div className="player-avatar player-avatar-fallback">
                         <span className="player-avatar-initial">
-                          {player.username.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
+                              {player.username.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                     <div className="player-details">
                       <div className="player-name">
-                        {player.username}
+                            {player.username}
                       </div>
                       <div className={`player-skill skill-${player.skill_level?.toLowerCase() || 'beginner'}`}>
                         {player.skill_level}
@@ -147,14 +147,14 @@ const RankingsPage: React.FC = () => {
                 </div>
                 <div className="change-col">
                   <div className="rank-change">
-                    {getRankChangeIcon(player.rank_change || 0)}
+                        {getRankChangeIcon(player.rank_change || 0)}
                     <span className="rank-change-number">
-                      {Math.abs(player.rank_change || 0)}
-                    </span>
-                  </div>
+                          {Math.abs(player.rank_change || 0)}
+                        </span>
+                      </div>
                 </div>
               </div>
-            ))}
+                ))}
           </div>
         </div>
       ) : (

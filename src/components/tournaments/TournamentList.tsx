@@ -162,7 +162,7 @@ export const TournamentList: React.FC = () => {
                     }}
                   >
                     {formatStatus(tournament.status)}
-                    {tournament.isFull && tournament.status === 'registration_open' && ' (Full)'}
+                    {tournament.participantCount && tournament.max_participants && tournament.participantCount >= tournament.max_participants && tournament.status === 'registration_open' && ' (Full)'}
                   </div>
                 </div>
               </div>
@@ -202,7 +202,7 @@ export const TournamentList: React.FC = () => {
 
                 {tournament.status === 'registration_open' &&
                   !tournament.isRegistered &&
-                  !tournament.isFull && (
+                  !(tournament.participantCount && tournament.max_participants && tournament.participantCount >= tournament.max_participants) && (
                     <button
                       onClick={() => handleRegister(tournament.id)}
                       className="tournament-card-btn tournament-card-btn-primary"
