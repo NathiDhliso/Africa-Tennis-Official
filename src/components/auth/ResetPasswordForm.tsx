@@ -24,7 +24,6 @@ export const ResetPasswordForm: React.FC = () => {
   const [success, setSuccess] = useState(false);
   
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     register,
@@ -51,8 +50,9 @@ export const ResetPasswordForm: React.FC = () => {
       setTimeout(() => {
         navigate('/login');
       }, 3000);
-    } catch (err: any) {
-      setError(err.message || 'Password reset failed. Please try again or contact support.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Password reset failed. Please try again or contact support.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

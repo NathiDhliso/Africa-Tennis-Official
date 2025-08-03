@@ -1,20 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BarChart3,
-  TrendingUp,
   Target,
   Zap,
   Clock,
   Activity,
   Award,
-  AlertTriangle,
-  CheckCircle,
   Eye,
   Brain,
   Gauge,
-  MapPin,
-  Timer,
-  Percent
+  Timer
 } from 'lucide-react';
 
 interface MatchStats {
@@ -70,8 +65,8 @@ interface RealTimeMatchAnalyticsProps {
   player1Id: string;
   player2Id: string;
   isActive: boolean;
-  currentScore?: any;
-  onAnalyticsUpdate?: (analytics: any) => void;
+  currentScore?: Record<string, unknown>;
+  onAnalyticsUpdate?: (analytics: Record<string, unknown>) => void;
 }
 
 const RealTimeMatchAnalytics: React.FC<RealTimeMatchAnalyticsProps> = ({
@@ -79,7 +74,6 @@ const RealTimeMatchAnalytics: React.FC<RealTimeMatchAnalyticsProps> = ({
   player1Id,
   player2Id,
   isActive,
-  currentScore,
   onAnalyticsUpdate
 }) => {
   const [matchStats, setMatchStats] = useState<MatchStats>({
@@ -177,7 +171,7 @@ const RealTimeMatchAnalytics: React.FC<RealTimeMatchAnalyticsProps> = ({
   }>>([]);
   
   const startTimeRef = useRef<number>(Date.now());
-  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Update match duration
   const updateMatchDuration = useCallback(() => {
@@ -293,7 +287,7 @@ const RealTimeMatchAnalytics: React.FC<RealTimeMatchAnalyticsProps> = ({
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            onClick={() => setSelectedView(key as any)}
+            onClick={() => setSelectedView(key as 'player1' | 'player2' | 'comparison')}
             className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-sm font-medium transition-colors ${
               selectedView === key
                 ? 'bg-quantum-cyan text-white'

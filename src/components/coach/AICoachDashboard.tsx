@@ -2,19 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Brain,
   Target,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
   BarChart3,
   Activity,
-  Zap,
   Eye,
   MessageSquare,
   Settings,
   Play,
   Pause,
   RotateCcw,
-  Award,
   Clock
 } from 'lucide-react';
 
@@ -126,7 +121,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
     matchDuration: 0
   });
   
-  const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const analysisIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
@@ -141,7 +136,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
   const speakInsight = useCallback((insight: CoachingInsight) => {
     if (!settings.voiceEnabled || !speechSynthesisRef.current) return;
 
-    const utterance = new SpeechSynthesisUtterance(
+    const utterance = new (window as any).SpeechSynthesisUtterance(
       `${insight.priority} priority: ${insight.title}. ${insight.recommendation}`
     );
     utterance.rate = 0.9;
@@ -189,7 +184,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
     } catch (error) {
       console.error('AI Coach analysis error:', error);
     }
-  }, [isActive, videoElement, settings, onInsightGenerated, speakInsight]);
+  }, [isActive, videoElement, settings, onInsightGenerated, speakInsight, analyzeCurrentGameState, createInsightFromAnalysis, updatePerformanceMetrics]);
 
   // Real game state analysis using AI service
   const analyzeCurrentGameState = async () => {
@@ -235,7 +230,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
       
       if (result.success && result.data.insights && result.data.insights.length > 0) {
         // Return the first insight with highest confidence
-        return result.data.insights.sort((a: any, b: any) => b.confidence - a.confidence)[0];
+        return result.data.insights.sort((a: { confidence: number }, b: { confidence: number }) => b.confidence - a.confidence)[0];
       }
       
       return null;
@@ -246,7 +241,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
   };
   
   // Create insight from analysis result
-  const createInsightFromAnalysis = (analysis: any) => {
+  const createInsightFromAnalysis = (analysis: { confidence: number; type: string; description: string; recommendation: string; priority: string }) => {
     if (!analysis || analysis.confidence < settings.insightThreshold) {
       return null;
     }

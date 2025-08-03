@@ -85,7 +85,7 @@ export const LoginForm: React.FC = () => {
       }
       
       // Check if the user has a profile
-      const { data: profileData, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', authData.user.id)
@@ -103,9 +103,10 @@ export const LoginForm: React.FC = () => {
       await signIn(email, password);
       setMessage('Authentication successful! Initializing your tennis dashboard...');
       navigate('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
-      setMessage(error.message || 'Authentication error: Unable to establish secure connection. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Authentication error: Unable to establish secure connection. Please try again.';
+      setMessage(errorMessage);
       setIsLoading(false);
     }
   };

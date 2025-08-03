@@ -37,8 +37,9 @@ export const ForgotPasswordForm: React.FC = () => {
       if (error) throw error;
       
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Password reset request failed. Please try again later.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Password reset request failed. Please try again later.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

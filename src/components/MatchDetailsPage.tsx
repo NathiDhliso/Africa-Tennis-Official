@@ -80,7 +80,6 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
   // Determine which player is the current user and which is the opponent
   const isUserChallenger = match.player1_id === user?.id;
   const opponent = isUserChallenger ? match.player2_id : match.player1_id;
-  const currentUser = isUserChallenger ? match.player1_id : match.player2_id;
   // Get opponent username from fetched profiles (fallback to 'Opponent')
   const opponentUsername = isUserChallenger ? player2Profile?.username : player1Profile?.username;
 
@@ -116,10 +115,6 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
       
       // Note: match_statistics and match_highlights tables don't exist in current schema
       // Using mock data for now until these tables are created
-      const matchStats = null;
-      const statsError = null;
-      const matchHighlights = null;
-      const highlightsError = null;
       
       // Process statistics - using mock data since match_statistics table doesn't exist
       // TODO: Create match_statistics table or calculate from match_events
@@ -246,21 +241,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
     }
   };
 
-  // Helper to format score (used in other components if needed)
-  const formatScore = (score: Match['score']): string => {
-    if (!score) return '';
-    if (typeof score === 'string') return score;
-    if (typeof score === 'object' && 'sets' in score) {
-      try {
-        // @ts-ignore -- runtime check
-        const sets = score.sets as Array<{ player1_games: number; player2_games: number }>;
-        return sets.map(s => `${s.player1_games}-${s.player2_games}`).join(', ');
-      } catch {
-        return '';
-      }
-    }
-    return '';
-  };
+
 
   const renderOverview = () => (
     <div className="tournament-details-overview">

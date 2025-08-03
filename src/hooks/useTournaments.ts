@@ -12,9 +12,9 @@ import {
 } from '../types';
 
 // Debounce utility to prevent excessive invalidations
-function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+function debounce<T extends (...args: unknown[]) => void>(func: T, wait: number): T {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return ((...args: any[]) => {
+  return ((...args: unknown[]) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), wait);
   }) as T;
@@ -109,7 +109,7 @@ export const useTournaments = (tournamentId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, tournamentId, tournamentsQueryKey, participantsQueryKey]);
+  }, [queryClient, tournamentId, tournamentsQueryKey, participantsQueryKey, user?.id]);
 
   return {
     tournaments: tournaments || [],

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, MapPin, Users, Search, Clock, Target, User } from 'lucide-react';
+import { X, Calendar, MapPin, Users, Search, Clock, Target } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../types/supabase-generated';
@@ -26,7 +26,6 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPlayers, setFilteredPlayers] = useState<Profile[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(preselectedPlayer || null);
-  const [showPlayerSearch, setShowPlayerSearch] = useState(!preselectedPlayer);
   
   const [formData, setFormData] = useState({
     date: '',
@@ -149,7 +148,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       const locationWithDetails = `${formData.location}${formData.courtType !== 'hard' ? ` (${formData.courtType} court)` : ''}`;
       
       // Create the match in Supabase
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('matches')
         .insert({
           player1_id: user.id,

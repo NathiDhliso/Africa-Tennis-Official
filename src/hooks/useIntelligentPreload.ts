@@ -14,7 +14,7 @@ const ROUTE_PRELOAD_MAP: Record<string, string[]> = {
 };
 
 // Component import functions
-const COMPONENT_IMPORTS: Record<string, () => Promise<any>> = {
+const COMPONENT_IMPORTS: Record<string, () => Promise<{ default: React.ComponentType<any> }>> = {
   '/dashboard': () => import('../pages/DashboardPage'),
   '/matches': () => import('../pages/MatchesPage'),
   '/tournaments': () => import('../pages/TournamentsPage'),

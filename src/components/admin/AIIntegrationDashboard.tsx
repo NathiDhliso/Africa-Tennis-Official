@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Brain,
   Eye,
@@ -8,16 +8,9 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-  Zap,
   Target,
-  Clock,
-  Users,
-  TrendingUp,
-  Award,
-  Gauge,
   Server,
   Wifi,
-  Database,
   Play,
   Pause,
   RotateCcw
@@ -55,7 +48,6 @@ interface AIIntegrationDashboardProps {
 }
 
 const AIIntegrationDashboard: React.FC<AIIntegrationDashboardProps> = ({
-  tournamentId,
   isAdmin
 }) => {
   const [systems, setSystems] = useState<AISystemStatus[]>([
@@ -144,7 +136,7 @@ const AIIntegrationDashboard: React.FC<AIIntegrationDashboardProps> = ({
             setMetrics(data.metrics || metrics);
             
             // Check for alerts based on real data
-            data.systems?.forEach((system: any) => {
+            data.systems?.forEach((system: AISystemStatus) => {
               if (system.accuracy < 90 || system.uptime < 95) {
                 const alertId = `alert_${Date.now()}_${system.id}`;
                 setAlerts(prevAlerts => {
@@ -172,7 +164,7 @@ const AIIntegrationDashboard: React.FC<AIIntegrationDashboardProps> = ({
     const interval = setInterval(fetchSystemData, 5000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [metrics]);
 
   // Get status color
   const getStatusColor = (status: string) => {

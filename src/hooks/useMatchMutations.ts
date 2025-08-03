@@ -6,11 +6,7 @@ import type { Database } from '../types/supabase-generated';
 type MatchInsert = Database['public']['Tables']['matches']['Insert'];
 type MatchUpdate = Database['public']['Tables']['matches']['Update'];
 
-const createMatchFn = async (match: MatchInsert) => {
-  const { data, error } = await supabase.from('matches').insert(match).select().single();
-  if (error) throw error;
-  return data;
-};
+
 
 const updateMatchFn = async ({ id, updates }: { id: string; updates: MatchUpdate }) => {
   const { error } = await supabase.from('matches').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
@@ -104,7 +100,7 @@ export const useMatchMutations = () => {
 
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       // Invalidate rankings and stats data
       queryClient.invalidateQueries({ queryKey: ['rankings'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });

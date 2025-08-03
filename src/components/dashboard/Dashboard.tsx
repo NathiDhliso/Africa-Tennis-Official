@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Target, Zap, Trophy } from 'lucide-react';
+import { Target, Zap } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useMatches } from '../../hooks/useMatches';
 import { useTournaments } from '../../hooks/useTournaments';
@@ -13,7 +13,7 @@ export const Dashboard: React.FC = () => {
   const { tournaments: rawTournaments, isLoading: isLoadingTournaments } = useTournaments();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const matches: Match[] = useMemo(() => {
+  const processedMatches: Match[] = useMemo(() => {
     if (!rawMatches) return [];
     return rawMatches.map((m: Match) => ({
       ...m,
@@ -29,9 +29,9 @@ export const Dashboard: React.FC = () => {
     }));
   }, [rawMatches]);
 
-  const tournaments: Tournament[] = useMemo(() => {
+  const processedTournaments: Tournament[] = useMemo(() => {
     if (!rawTournaments) return [];
-    return rawTournaments.map((t: any) => ({
+    return rawTournaments.map((t: Tournament) => ({
       id: t.id,
       name: t.name,
       description: t.description,
