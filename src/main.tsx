@@ -39,11 +39,11 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh longer
       gcTime: 15 * 60 * 1000, // 15 minutes - keep in memory longer
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // Don't retry on insufficient resources or network errors
         if ((error as Error)?.message?.includes('ERR_INSUFFICIENT_RESOURCES') || 
             (error as Error)?.message?.includes('Failed to fetch') ||
-            (error as any)?.status >= 400) {
+            (error as { status?: number })?.status >= 400) {
           return false;
         }
         return failureCount < 2;
@@ -54,7 +54,7 @@ const queryClient = new QueryClient({
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     },
     mutations: {
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // Don't retry mutations on resource errors
         if ((error as Error)?.message?.includes('ERR_INSUFFICIENT_RESOURCES')) {
           return false;

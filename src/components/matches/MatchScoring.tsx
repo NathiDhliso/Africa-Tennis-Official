@@ -16,7 +16,6 @@ import {
   Settings,
   BarChart3
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import apiClient from '../../lib/aws';
 import LoadingSpinner from '../LoadingSpinner';
@@ -26,7 +25,6 @@ import AIUmpirePanel from '../umpire/AIUmpirePanel';
 import AICoachDashboard from '../coach/AICoachDashboard';
 import RealTimeMatchAnalytics from '../analytics/RealTimeMatchAnalytics';
 import type { Json } from '../../types/supabase-generated';
-import type { Database } from '../../types/supabase-generated';
 import { Match, MatchScore } from '../../types';
 
 interface MatchScoreHistory {
@@ -166,7 +164,7 @@ const MatchScoring: React.FC<{
             if (eventData && eventData.length > 0) {
               const videos = eventData
                 .filter(event => event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) && 'video_url' in event.metadata)
-                .map(event => (event.metadata as any).video_url)
+                .map(event => (event.metadata as Record<string, unknown>).video_url)
                 .filter(url => typeof url === 'string');
               setSavedVideos(videos);
             }
@@ -234,7 +232,7 @@ const MatchScoring: React.FC<{
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, [match.id, match.player1_id, onBack]);
+  }, [match, onBack]);
 
   useEffect(() => {
     if (score) {
@@ -354,13 +352,14 @@ const MatchScoring: React.FC<{
         setScoreHistory(newHistory);
         setScore(previousScore);
         scoreRef.current = previousScore;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error undoing point:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError({
           visible: true,
           title: 'Undo Failed',
           message: 'We couldn\'t undo your last action. Please try again.',
-          details: err.message,
+          details: errorMessage,
           type: 'error'
         });
       } finally {
@@ -397,13 +396,14 @@ const MatchScoring: React.FC<{
       setTimeout(() => {
         onBack();
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error ending match:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError({
         visible: true,
         title: 'Error Ending Match',
         message: 'We couldn\'t complete the match. Please try again.',
-        details: err.message,
+        details: errorMessage,
         type: 'error'
       });
     } finally {
@@ -479,13 +479,14 @@ const MatchScoring: React.FC<{
       setTimeout(() => {
         setShowInsight(false);
       }, 10000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error getting umpire insight:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError({
         visible: true,
         title: 'AI Insight Failed',
         message: 'We couldn\'t fetch the AI umpire insight right now. This may be due to a temporary server issue or network problem. Please try again shortly.',
-        details: err.message,
+        details: errorMessage,
         type: 'error'
       });
     } finally {
@@ -500,13 +501,13 @@ const MatchScoring: React.FC<{
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleUmpireCall = (call: any) => {
+  const handleUmpireCall = (call: unknown) => {
     console.log('AI Umpire call:', call);
     // In a real implementation, this could automatically update the score
     // or provide the umpire with call suggestions
   };
 
-  const handleCoachingInsight = (insight: any) => {
+  const handleCoachingInsight = (insight: unknown) => {
     console.log('AI Coaching insight:', insight);
     // Store insights for post-match analysis
   };

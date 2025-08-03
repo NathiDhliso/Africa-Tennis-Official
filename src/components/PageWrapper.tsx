@@ -13,8 +13,7 @@ const PageWrapper: React.FC<PageWrapperProps> = ({
   children,
   className = '',
   enableStagger = true,
-  showSkeleton = false,
-  skeletonDelay = 300
+  showSkeleton = false
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [showContent, setShowContent] = useState(!showSkeleton);

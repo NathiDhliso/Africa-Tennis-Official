@@ -71,12 +71,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
     } else if (match.score && typeof match.score === 'object') {
       // For JSONB score objects, format sets
       try {
-        const scoreObj = match.score as any;
-        const sets = scoreObj.sets || [];
+        const scoreObj = match.score as Record<string, unknown>;
+        const sets = (scoreObj.sets as Array<Record<string, unknown>>) || [];
         
         if (sets.length === 0) return 'Match completed';
         
-        return sets.map((set: any) => {
+        return sets.map((set: Record<string, unknown>) => {
           const p1Games = set.player1_games || set.player1 || 0;
           const p2Games = set.player2_games || set.player2 || 0;
           return `${p1Games}-${p2Games}`;

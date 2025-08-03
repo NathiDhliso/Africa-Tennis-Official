@@ -24,7 +24,7 @@ const MatchRequestActions: React.FC<MatchRequestActionsProps> = ({ match, onActi
 
       if (error) throw error;
       onActionComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error accepting match:', error);
       setError('Failed to accept match. Please try again.');
     } finally {
@@ -43,7 +43,7 @@ const MatchRequestActions: React.FC<MatchRequestActionsProps> = ({ match, onActi
 
       if (error) throw error;
       onActionComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error declining match:', error);
       setError('Failed to decline match. Please try again.');
     } finally {

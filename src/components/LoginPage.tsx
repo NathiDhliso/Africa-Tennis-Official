@@ -63,7 +63,7 @@ const LoginPage: React.FC = () => {
       // Actual login processing without artificial delay
       await signIn(email, password);
       setMessage('Login successful! Redirecting...');
-    } catch (error) {
+    } catch {
       setMessage('Invalid credentials. Please try again.');
       setIsLoading(false);
     }

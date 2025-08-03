@@ -276,7 +276,12 @@ class VideoProcessingService {
       });
 
       // Transform response to match expected interface
-      const typedResponse = response as { success: boolean; data?: any; error?: string };
+      const typedResponse = response as { success: boolean; data?: {
+        videoUrl: string;
+        compressedSize?: number;
+        compressionRatio?: string;
+        analysis?: unknown;
+      }; error?: string };
       if (typedResponse.success && typedResponse.data) {
         return {
           videoUrl: typedResponse.data.videoUrl,

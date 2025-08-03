@@ -102,7 +102,7 @@ export const MatchList: React.FC = () => {
       { 
         id: selectedMatch.id, 
         updates: { 
-          score: scoreObject as any, // Supabase types are tricky for JSONB
+          score: scoreObject as Record<string, unknown>, // Supabase JSONB type
           winner_id: winnerId, 
           status: 'completed' 
         }

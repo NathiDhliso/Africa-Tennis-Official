@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, Sparkles, Loader2, Trophy, BarChart3, AlertTriangle, Info, CheckCircle, Brain, Target, TrendingUp, Award, Zap } from 'lucide-react';
+import { Search, User, Loader2, Trophy, BarChart3, AlertTriangle, Info, CheckCircle, Brain, Target, TrendingUp, Award } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
-import apiClient from '../lib/aws';
 import type { Database } from '../types/supabase-generated';
 import PlayerAnalysisSection from '../components/ai-coach/PlayerAnalysisSection';
 
@@ -15,8 +14,8 @@ const AICoachPage: React.FC = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [playerMatches, setPlayerMatches] = useState<any[]>([]);
+  const [success] = useState<string | null>(null);
+  const [playerMatches, setPlayerMatches] = useState<Database['public']['Tables']['matches']['Row'][]>([]);
 
   // Use the current user's profile as the default selected player
   useEffect(() => {
@@ -24,7 +23,7 @@ const AICoachPage: React.FC = () => {
       setSelectedPlayer(profile);
       fetchPlayerMatches(profile.user_id);
     }
-  }, [profile]);
+  }, [profile, selectedPlayer]);
 
   // Search for players
   useEffect(() => {
