@@ -10,7 +10,11 @@ import {
   Loader2,
   X,
   Video,
-  Camera
+  Camera,
+  Eye,
+  Brain,
+  Settings,
+  BarChart3
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
@@ -18,6 +22,9 @@ import apiClient from '../../lib/aws';
 import LoadingSpinner from '../LoadingSpinner';
 import ErrorDisplay from '../ErrorDisplay';
 import VideoTrackingPanel from '../video/VideoTrackingPanel';
+import AIUmpirePanel from '../umpire/AIUmpirePanel';
+import AICoachDashboard from '../coach/AICoachDashboard';
+import RealTimeMatchAnalytics from '../analytics/RealTimeMatchAnalytics';
 import type { Json } from '../../types/supabase-generated';
 import type { Database } from '../../types/supabase-generated';
 import { Match, MatchScore } from '../../types';
@@ -77,6 +84,10 @@ const MatchScoring: React.FC<{
   const [showInsight, setShowInsight] = useState(false);
   const [showVideoTracking, setShowVideoTracking] = useState(false);
   const [savedVideos, setSavedVideos] = useState<string[]>([]);
+  const [showAIUmpire, setShowAIUmpire] = useState(false);
+  const [showAICoach, setShowAICoach] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [aiSystemsActive, setAiSystemsActive] = useState(false);
 
   // Create a default score object
   const createDefaultScore = (serverId: string): MatchScore => {
@@ -489,6 +500,31 @@ const MatchScoring: React.FC<{
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
+  const handleUmpireCall = (call: any) => {
+    console.log('AI Umpire call:', call);
+    // In a real implementation, this could automatically update the score
+    // or provide the umpire with call suggestions
+  };
+
+  const handleCoachingInsight = (insight: any) => {
+    console.log('AI Coaching insight:', insight);
+    // Store insights for post-match analysis
+  };
+
+  const toggleAISystems = () => {
+    setAiSystemsActive(!aiSystemsActive);
+    if (!aiSystemsActive) {
+      setShowAIUmpire(true);
+      setShowAICoach(true);
+      setShowAnalytics(true);
+    }
+  };
+
+  const handleAnalyticsUpdate = (analytics: any) => {
+    console.log('Analytics update:', analytics);
+    // Store analytics data for post-match analysis
+  };
+
   const dismissError = () => {
     setError(prev => ({...prev, visible: false}));
   };
@@ -829,7 +865,7 @@ const MatchScoring: React.FC<{
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 mb-6">
           <button
             onClick={onBack}
             className="btn btn-ghost flex-1"
@@ -880,6 +916,89 @@ const MatchScoring: React.FC<{
             <Trophy className="h-5 w-5 mr-2" />
             End Match
           </button>
+        </div>
+
+        {/* AI Systems Control */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          <button
+            onClick={toggleAISystems}
+            className={`btn flex-1 ${
+              aiSystemsActive ? 'btn-primary' : 'btn-secondary'
+            }`}
+          >
+            <Settings className="h-5 w-5 mr-2" />
+            {aiSystemsActive ? 'AI Systems Active' : 'Activate AI Systems'}
+          </button>
+          
+          <button
+            onClick={() => setShowAIUmpire(!showAIUmpire)}
+            className={`btn flex-1 ${
+              showAIUmpire ? 'btn-primary' : 'btn-secondary'
+            }`}
+            disabled={!aiSystemsActive}
+          >
+            <Eye className="h-5 w-5 mr-2" />
+            AI Umpire
+          </button>
+          
+          <button
+            onClick={() => setShowAICoach(!showAICoach)}
+            className={`btn flex-1 ${
+              showAICoach ? 'btn-primary' : 'btn-secondary'
+            }`}
+            disabled={!aiSystemsActive}
+          >
+            <Brain className="h-5 w-5 mr-2" />
+            AI Coach
+          </button>
+          
+          <button
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className={`btn flex-1 ${
+              showAnalytics ? 'btn-primary' : 'btn-secondary'
+            }`}
+            disabled={!aiSystemsActive}
+          >
+            <BarChart3 className="h-5 w-5 mr-2" />
+            Analytics
+          </button>
+        </div>
+
+        {/* AI Systems Panels */}
+        <div className="space-y-4 mb-6">
+          {/* Top Row - Umpire and Coach */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {showAIUmpire && (
+              <AIUmpirePanel
+                matchId={match.id}
+                isActive={aiSystemsActive}
+                onCallMade={handleUmpireCall}
+                onSettingsChange={(settings) => console.log('Umpire settings:', settings)}
+              />
+            )}
+            
+            {showAICoach && (
+              <AICoachDashboard
+                matchId={match.id}
+                player1Id={match.player1_id}
+                player2Id={match.player2_id}
+                isActive={aiSystemsActive}
+                onInsightGenerated={handleCoachingInsight}
+              />
+            )}
+          </div>
+          
+          {/* Bottom Row - Analytics */}
+          {showAnalytics && (
+            <RealTimeMatchAnalytics
+              matchId={match.id}
+              player1Id={match.player1_id}
+              player2Id={match.player2_id}
+              isActive={aiSystemsActive}
+              currentScore={score}
+              onAnalyticsUpdate={handleAnalyticsUpdate}
+            />
+          )}
         </div>
 
         {/* End Match Confirmation Modal */}

@@ -12,10 +12,12 @@ import {
   Swords,
   LogOut,
   Sparkles,
-  Video
+  Video,
+  Server
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuthStore } from '../../stores/authStore';
+import { useIntelligentPreload } from '../../hooks/useIntelligentPreload';
 
 const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -24,6 +26,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { profile, signOut } = useAuthStore();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { preloadOnHover } = useIntelligentPreload();
 
   // Navigation items without the Profile button
   const navigationItems = [
@@ -33,6 +36,7 @@ const Sidebar: React.FC = () => {
     { id: 'umpire', label: 'Live Scoring', icon: Gavel, path: '/umpire' },
     { id: 'rankings', label: 'Ratings & Rankings', icon: BarChart3, path: '/rankings' },
     { id: 'ai-coach', label: 'AI Coach', icon: Sparkles, path: '/ai-coach' },
+    { id: 'ai-integration', label: 'AI Systems', icon: Server, path: '/ai-integration' },
     { id: 'video-analysis', label: 'Video Analysis', icon: Video, path: '/video-analysis' },
   ];
 
@@ -103,6 +107,7 @@ const Sidebar: React.FC = () => {
             to="/profile"
             className="user-profile-button block"
             onClick={() => setIsMobileOpen(false)}
+            onMouseEnter={() => preloadOnHover('/profile')}
           >
             <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
@@ -139,6 +144,7 @@ const Sidebar: React.FC = () => {
                     to={item.path}
                     className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
                     onClick={() => setIsMobileOpen(false)}
+                    onMouseEnter={() => preloadOnHover(item.path)}
                     aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon size={20} className="sidebar-nav-icon" />

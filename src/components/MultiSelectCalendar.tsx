@@ -141,13 +141,21 @@ const MultiSelectCalendar: React.FC<MultiSelectCalendarProps> = ({
   };
 
   const handleSaveChanges = () => {
+    console.log('=== CALENDAR SAVE CHANGES ===');
+    console.log('Temp start date:', tempStartDate);
+    console.log('Temp end date:', tempEndDate);
+    
     // Apply all changes to the parent component
+    const datesToSave = [];
     if (tempStartDate) {
-      onDatesChange([tempStartDate]);
+      datesToSave.push(tempStartDate);
     }
     if (tempEndDate) {
-      onDatesChange([tempEndDate]);
+      datesToSave.push(tempEndDate);
     }
+    
+    console.log('Dates to save:', datesToSave);
+    onDatesChange(datesToSave);
     
     // Close the modal
     setShowTimeSelector(null);

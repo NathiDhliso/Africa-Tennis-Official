@@ -84,6 +84,7 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
   ];
 
   const handleInputChange = (field: string, value: string | number) => {
+    console.log(`Form field changed: ${field} = `, value);
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -155,37 +156,74 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || !validateForm()) return;
+    console.log('=== TOURNAMENT CREATION DEBUG ===');
+    console.log('User:', user);
+    console.log('Form data:', formData);
+    console.log('Validation result:', validateForm());
+    console.log('Form errors:', errors);
+    
+    if (!user) {
+      console.error('No user found - cannot create tournament');
+      return;
+    }
+    
+    if (!validateForm()) {
+      console.error('Form validation failed - cannot create tournament');
+      console.log('Current errors:', errors);
+      return;
+    }
 
     setIsSubmitting(true);
+    console.log('Starting tournament creation...');
 
     try {
+      const tournamentData = {
+        name: formData.name,
+        description: formData.description,
+        organizer_id: user?.id,
+        start_date: formData.startDate!.toISOString(),
+        end_date: formData.endDate!.toISOString(),
+        format: formData.format,
+        max_participants: formData.maxParticipants,
+        location: formData.location,
+        status: 'registration_open',
+        brackets_generated: false
+      };
+      
+      console.log('Tournament data to insert:', tournamentData);
+      
       // Create tournament in Supabase
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tournaments')
-        .insert({
-          name: formData.name,
-          description: formData.description,
-          organizer_id: user?.id,
-          start_date: formData.startDate!.toISOString(),
-          end_date: formData.endDate!.toISOString(),
-          format: formData.format,
-          max_participants: formData.maxParticipants,
-          location: formData.location,
-          status: 'registration_open',
-          brackets_generated: false
-        })
+        .insert(tournamentData)
         .select()
         .single();
         
-      if (error) throw error;
+      console.log('Supabase response - data:', data);
+      console.log('Supabase response - error:', error);
+        
+      if (error) {
+        console.error('Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
 
+      console.log('Tournament created successfully:', data);
       onTournamentCreated();
       onClose();
     } catch (error) {
-      console.error('Failed to create tournament:', error);
+      console.error('=== TOURNAMENT CREATION ERROR ===');
+      console.error('Error type:', typeof error);
+      console.error('Error object:', error);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     } finally {
       setIsSubmitting(false);
+      console.log('Tournament creation process completed');
     }
   };
 
@@ -305,7 +343,13 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
 
               <button
                 type="button"
-                onClick={() => setShowCalendar(true)}
+                onClick={() => {
+                  console.log('=== OPENING CALENDAR MODAL ===');
+                  console.log('Current showCalendar state:', showCalendar);
+                  console.log('Current form data:', formData);
+                  setShowCalendar(true);
+                  console.log('Calendar modal should now be open');
+                }}
                 className="btn btn-secondary w-full mt-3"
               >
                 <Calendar size={16} />
@@ -491,13 +535,20 @@ const TournamentCreateForm: React.FC<TournamentCreateFormProps> = ({ onClose, on
         <MultiSelectCalendar
           selectedDates={[formData.startDate, formData.endDate].filter(Boolean) as Date[]}
           onDatesChange={(dates: Date[]) => {
+            console.log('=== TOURNAMENT FORM DATE CHANGE ===');
+            console.log('Received dates from calendar:', dates);
+            console.log('Current form data before update:', formData);
+            
             if (dates.length > 0) {
-              setFormData(prev => ({ 
-                ...prev, 
+              const newFormData = { 
+                ...formData, 
                 startDate: dates[0] || null,
                 endDate: dates[1] || null
-              }));
+              };
+              console.log('New form data after update:', newFormData);
+              setFormData(newFormData);
             }
+            console.log('Closing calendar modal');
             setShowCalendar(false);
           }}
           maxSelectableDates={2}

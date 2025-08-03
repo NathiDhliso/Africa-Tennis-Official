@@ -39,7 +39,7 @@ export const ProfileForm: React.FC = () => {
     defaultValues: {
       username: profile?.username || '',
       bio: profile?.bio || '',
-      skill_level: profile?.skill_level || 'beginner',
+      skill_level: (profile?.skill_level as 'beginner' | 'intermediate' | 'advanced' | 'expert') || 'beginner',
     }
   })
 
@@ -95,7 +95,7 @@ export const ProfileForm: React.FC = () => {
     try {
       // Upload file to Supabase Storage
       const fileExt = file.name.split('.').pop()
-      const fileName = `${profile.user_id}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const fileName = `${profile.user_id}-${Date.now()}.${fileExt}`
       const filePath = `profile-pictures/${fileName}`
       
       const { error: uploadError } = await supabase.storage
@@ -241,7 +241,7 @@ export const ProfileForm: React.FC = () => {
               )}
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="profile-form">
+            <form onSubmit={handleSubmit(onSubmit as any)} className="profile-form">
               {/* Username */}
               <div className="profile-form-group">
                 <label htmlFor="username" className="profile-form-label">

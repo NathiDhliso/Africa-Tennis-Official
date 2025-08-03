@@ -107,84 +107,96 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
       setPlayer1Profile(matchData.player1 as PlayerProfile);
       setPlayer2Profile(matchData.player2 as PlayerProfile);
 
-      // Generate mock statistics as fallback
-      const mockStats: MatchStatistics = {
-        possession: { 
-          user: Math.floor(Math.random() * 20) + 40, 
-          opponent: 0 
+      // Fetch match events for timeline
+      const { data: matchEvents, error: eventsError } = await supabase
+        .from('match_events')
+        .select('*')
+        .eq('match_id', match.id)
+        .order('timestamp', { ascending: true });
+      
+      // Note: match_statistics and match_highlights tables don't exist in current schema
+      // Using mock data for now until these tables are created
+      const matchStats = null;
+      const statsError = null;
+      const matchHighlights = null;
+      const highlightsError = null;
+      
+      // Process statistics - using mock data since match_statistics table doesn't exist
+      // TODO: Create match_statistics table or calculate from match_events
+      setStatistics({
+        possession: {
+          user: 52,
+          opponent: 48
         },
-        shots: { 
-          user: Math.floor(Math.random() * 50) + 80, 
-          opponent: Math.floor(Math.random() * 50) + 80 
+        shots: {
+          user: 45,
+          opponent: 38
         },
-        aces: { 
-          user: Math.floor(Math.random() * 8) + 2, 
-          opponent: Math.floor(Math.random() * 8) + 2 
+        aces: {
+          user: 3,
+          opponent: 2
         },
-        doubleFaults: { 
-          user: Math.floor(Math.random() * 4), 
-          opponent: Math.floor(Math.random() * 4) 
+        doubleFaults: {
+          user: 1,
+          opponent: 2
         },
         breakPoints: {
-          user: { won: Math.floor(Math.random() * 4) + 1, total: Math.floor(Math.random() * 3) + 3 },
-          opponent: { won: Math.floor(Math.random() * 4) + 1, total: Math.floor(Math.random() * 3) + 3 }
+          user: { 
+            won: 2, 
+            total: 4 
+          },
+          opponent: { 
+            won: 1, 
+            total: 3 
+          }
         },
-        winners: { 
-          user: Math.floor(Math.random() * 20) + 15, 
-          opponent: Math.floor(Math.random() * 20) + 15 
+        winners: {
+          user: 12,
+          opponent: 8
         },
-        unforcedErrors: { 
-          user: Math.floor(Math.random() * 15) + 10, 
-          opponent: Math.floor(Math.random() * 15) + 10 
+        unforcedErrors: {
+          user: 8,
+          opponent: 12
         }
-      };
+      });
       
-      // Calculate opponent possession
-      mockStats.possession.opponent = 100 - mockStats.possession.user;
+      // Process timeline events if available
+      if (matchEvents && !eventsError) {
+ const timeline: MatchTimeline[] = matchEvents.map(event => ({
+          id: event.id,
+          time: event.timestamp ? new Date(event.timestamp).toLocaleTimeString('en-US', {
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }) : '',
+          event: event.event_type,
+          player: event.player_id === match.player1_id ? 
+            (player1Profile?.username || 'Player 1') : 
+            (player2Profile?.username || 'Player 2'),
+          description: event.description || '',
+          type: event.event_type as 'error' | 'ace' | 'winner' | 'point' | 'game' | 'set' | 'break'
+        }));
+        setTimeline(timeline);
+      }
       
-      // Generate mock timeline
-      const mockTimeline: MatchTimeline[] = [
-        { time: '0:05', event: 'Match Start', player: 'System', description: 'Match begins', type: 'game' },
-        { time: '0:12', event: 'Ace', player: player1Profile?.username || 'You', description: 'Service ace down the T', type: 'ace' },
-        { time: '0:28', event: 'Winner', player: player2Profile?.username || 'Opponent', description: 'Forehand winner cross-court', type: 'winner' },
-        { time: '0:45', event: 'Break Point', player: player1Profile?.username || 'You', description: 'Break point converted', type: 'break' },
-        { time: '1:15', event: 'Set Won', player: 'Unknown', description: 'First set completed', type: 'set' },
-      ];
-      
-      // Generate mock highlights
+      // Process highlights - using mock data since match_highlights table doesn't exist
+      // TODO: Create match_highlights table or generate from match_events
       const mockHighlights: MatchHighlight[] = [
         {
           id: '1',
-          title: 'Amazing Rally',
-          description: '32-shot rally ending with a spectacular winner',
-          timestamp: '1:23:45',
-          type: 'rally'
-        },
-        {
-          id: '2',
-          title: 'Service Ace',
-          description: 'Powerful ace at 125 mph to save break point',
-          timestamp: '0:45:12',
+          title: 'Ace on Match Point',
+          description: 'Powerful serve down the T to close out the match',
+          timestamp: '2024-01-15T14:45:30Z',
           type: 'ace'
         },
         {
-          id: '3',
+          id: '2',
           title: 'Break Point Conversion',
-          description: 'Crucial break in the deciding set',
-          timestamp: '2:15:30',
-          type: 'break_point'
-        },
-        {
-          id: '4',
-          title: 'Comeback Victory',
-          description: 'Won from 2 sets down in thrilling fashion',
-          timestamp: '2:45:00',
-          type: 'comeback'
+          description: 'Crucial break in the second set with a forehand winner',
+          timestamp: '2024-01-15T14:32:15Z',
+          type: 'winner'
         }
       ];
-      
-      setStatistics(mockStats);
-      setTimeline(mockTimeline);
       setHighlights(mockHighlights);
     } catch (error: unknown) {
       console.error('Error loading match:', error);

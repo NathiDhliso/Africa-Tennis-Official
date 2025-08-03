@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Calendar, MapPin, Trophy, Users, Clock, Target, ChevronRight, CheckCircle, Play, Award, AlertTriangle, Info } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
@@ -56,11 +56,32 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   
   const user = useAuthStore(state => state.user)
 
-  useEffect(() => {
-    const fetchTournamentDetails = async () => {
-      setLoading(true)
-      setError(prev => ({...prev, visible: false}))
-      try {
+  const fetchTournamentDetails = useCallback(async (retryCount = 0) => {
+    console.log('=== FETCHING TOURNAMENT DETAILS ===');
+    console.log('Tournament ID:', tournamentId);
+    console.log('Retry count:', retryCount);
+    setLoading(true)
+    setError(prev => ({...prev, visible: false}))
+    
+    // Add timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      if (retryCount < 2) {
+        console.log('Request timeout, retrying...');
+        clearTimeout(timeoutId);
+        fetchTournamentDetails(retryCount + 1);
+        return;
+      }
+      setError({
+        visible: true,
+        title: 'Request Timeout',
+        message: 'The request is taking too long. Please check your connection and try again.',
+        type: 'error'
+      })
+      setLoading(false)
+    }, 10000) // 10 second timeout with retry
+    
+    try {
+        console.log('Fetching tournament data...');
         // Fetch tournament data
         const { data: tournamentData, error: tournamentError } = await supabase
           .from('tournaments')
@@ -72,9 +93,11 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
           .single()
 
         if (tournamentError) throw tournamentError
+        console.log('Tournament data fetched successfully:', tournamentData);
         setTournament(tournamentData)
         setOrganizer(tournamentData.organizer)
 
+        console.log('Fetching participants data...');
         // Fetch participants
         const { data: participantsData, error: participantsError } = await supabase
           .from('tournament_participants')
@@ -86,6 +109,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
           .order('seed', { ascending: true })
 
         if (participantsError) throw participantsError
+        console.log('Participants data fetched successfully:', participantsData);
         setParticipants(participantsData || [])
 
         // Check if user is registered
@@ -96,6 +120,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
           setIsRegistered(isUserRegistered)
         }
 
+        console.log('Fetching matches data...');
         // Fetch tournament matches
         const { data: matchesData, error: matchesError } = await supabase
           .from('matches')
@@ -109,6 +134,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
           .order('date', { ascending: true })
 
         if (matchesError) throw matchesError
+        console.log('Matches data fetched successfully:', matchesData);
         
         // Convert database matches to application matches
         const matches: Match[] = (matchesData || []).map((dbMatch: DatabaseMatch) => ({
@@ -145,7 +171,9 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
         }));
         
         setMatches(matches)
+        clearTimeout(timeoutId) // Clear timeout on success
       } catch (error: any) {
+        clearTimeout(timeoutId) // Clear timeout on error
         console.error('Error fetching tournament details:', error)
         setError({
           visible: true,
@@ -157,14 +185,17 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       } finally {
         setLoading(false)
       }
-    }
+    }, [tournamentId])
 
+  useEffect(() => {
+    console.log('=== TOURNAMENT DETAILS USEEFFECT RUNNING ===');
+    console.log('Tournament ID:', tournamentId);
     fetchTournamentDetails()
 
     // Set up real-time subscription for tournament updates
     const tournamentSubscription = supabase
       .channel(`tournament-${tournamentId}`)
-      .on('postgres_changes', 
+      .on('postgres_changes' as any, 
         { event: '*', schema: 'public', table: 'tournaments', filter: `id=eq.${tournamentId}` },
         fetchTournamentDetails
       )
@@ -173,7 +204,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
     // Set up real-time subscription for participants updates
     const participantsSubscription = supabase
       .channel(`tournament-participants-${tournamentId}`)
-      .on('postgres_changes', 
+      .on('postgres_changes' as any, 
         { event: '*', schema: 'public', table: 'tournament_participants', filter: `tournament_id=eq.${tournamentId}` },
         fetchTournamentDetails
       )
@@ -182,7 +213,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
     // Set up real-time subscription for matches updates
     const matchesSubscription = supabase
       .channel(`tournament-matches-${tournamentId}`)
-      .on('postgres_changes', 
+      .on('postgres_changes' as any, 
         { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${tournamentId}` },
         fetchTournamentDetails
       )
@@ -193,7 +224,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       supabase.removeChannel(participantsSubscription)
       supabase.removeChannel(matchesSubscription)
     }
-  }, [tournamentId, user])
+  }, [tournamentId])
 
   const handleRegister = async () => {
     if (!user || !tournament) return

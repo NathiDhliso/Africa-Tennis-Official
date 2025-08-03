@@ -92,8 +92,8 @@ export const MatchList: React.FC = () => {
       : selectedMatch.challengedId;
 
     const scoreObject = {
-      sets: [{ player1_games, player2_games, games: [] }],
-      current_game: { player1: '0', player2: '0' },
+      sets: [{ player1_games, player2_games }],
+      current_game: { player1_points: 0, player2_points: 0 },
       server_id: selectedMatch.challengerId,
       is_tiebreak: false
     };

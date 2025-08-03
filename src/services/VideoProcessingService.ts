@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const API_BASE_URL = import.meta.env.VITE_AWS_API_ENDPOINT || 'https://your-api-gateway-url.execute-api.region.amazonaws.com/prod';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://dd7v2jtghk.execute-api.us-west-2.amazonaws.com/prod').replace(/\/$/, '');
 
 export interface VideoProcessingOptions {
   matchId?: string;
@@ -35,6 +35,11 @@ export interface VideoProcessingResult {
       lines: any[];
       regions: any;
       confidence: number;
+      perspective?: {
+        viewAngle?: number;
+        distortion?: number;
+        homographyMatrix?: number[][];
+      };
     };
     highlights: Array<{
       startTime: number;

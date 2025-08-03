@@ -95,17 +95,15 @@ const UmpirePage: React.FC = () => {
     }
   }, [user, isLoadingTournaments, hasInitialLoad]);
 
-  const loadMatches = React.useCallback(async () => {
-    if (isLoadingMatches || tournaments.length === 0) return;
+  const loadMatches = React.useCallback(async (tournamentIds: string[]) => {
+    if (isLoadingMatches || tournamentIds.length === 0) return;
     
     setIsLoadingMatches(true);
     
     try {
-      const tournamentIds = tournaments.map(t => t.id);
-      
-             // Add timeout and abort controller
-       const abortController = new window.AbortController();
-       const timeoutId = setTimeout(() => abortController.abort(), 10000);
+      // Add timeout and abort controller
+      const abortController = new window.AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), 10000);
       
       const { data, error } = await supabase
         .from('matches')
@@ -172,7 +170,7 @@ const UmpirePage: React.FC = () => {
     } finally {
       setIsLoadingMatches(false);
     }
-  }, [tournaments, isLoadingMatches]);
+  }, [isLoadingMatches]);
 
   React.useEffect(() => {
     loadTournaments();
@@ -180,9 +178,10 @@ const UmpirePage: React.FC = () => {
 
   React.useEffect(() => {
     if (tournaments.length > 0) {
-      loadMatches();
+      const tournamentIds = tournaments.map(t => t.id);
+      loadMatches(tournamentIds);
     }
-  }, [tournaments.length, loadMatches]);
+  }, [tournaments.length]); // Removed loadMatches dependency to prevent infinite loop
 
 
 
@@ -192,8 +191,11 @@ const UmpirePage: React.FC = () => {
 
   const handleBackToList = React.useCallback(() => {
     setSelectedMatch(null);
-    loadMatches(); // Refresh matches when returning from scoring
-  }, [loadMatches]);
+    if (tournaments.length > 0) {
+      const tournamentIds = tournaments.map(t => t.id);
+      loadMatches(tournamentIds); // Refresh matches when returning from scoring
+    }
+  }, [tournaments]); // Removed loadMatches dependency to prevent recreation
 
   const dismissError = React.useCallback(() => {
     setError(prev => ({ ...prev, visible: false }));
@@ -263,7 +265,11 @@ const UmpirePage: React.FC = () => {
                 <h2 className="umpire-section-title">Active Tournaments</h2>
                 <div className="umpire-tournament-grid">
                   {tournaments.map(tournament => (
-                    <div key={tournament.id} className="umpire-tournament-card">
+                    <Link 
+                      key={tournament.id} 
+                      to={`/tournaments/${tournament.id}`}
+                      className="umpire-tournament-card"
+                    >
                       <div className="tournament-header">
                         <h3>{tournament.name}</h3>
                         <span className={`tournament-status ${tournament.status}`}>
@@ -274,7 +280,12 @@ const UmpirePage: React.FC = () => {
                         <p><strong>Location:</strong> {tournament.location}</p>
                         <p><strong>Start:</strong> {new Date(tournament.start_date).toLocaleDateString()}</p>
                       </div>
-                    </div>
+                      <div className="tournament-action">
+                        <span className="tournament-action-text">
+                          View Tournament Details
+                        </span>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -282,10 +293,19 @@ const UmpirePage: React.FC = () => {
               <div className="umpire-section">
                 <h2 className="umpire-section-title">
                   Matches Available for Officiating
-                  {isLoadingMatches && <LoadingSpinner size="small" />}
+                  {isLoadingMatches && (
+                    <div className="loading-indicator">
+                      <LoadingSpinner size="small" />
+                      <span className="loading-text">Loading matches...</span>
+                    </div>
+                  )}
                 </h2>
                 
-                {matches.length === 0 ? (
+                {isLoadingMatches ? (
+                  <div className="umpire-loading-matches">
+                    <LoadingSpinner size="medium" text="Loading matches for officiating..." />
+                  </div>
+                ) : matches.length === 0 ? (
                   <div className="umpire-empty-list">
                     <Play className="h-12 w-12 text-quantum-cyan opacity-50" />
                     <h3>No Matches Available</h3>

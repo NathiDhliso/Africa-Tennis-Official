@@ -63,6 +63,12 @@ export const useTournamentMutations = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['tournamentParticipants', variables.tournamentId] });
+      // Show success notification
+      console.log('Successfully registered for tournament');
+    },
+    onError: (error) => {
+      console.error('Failed to register for tournament:', error);
+      // You can add toast notification here
     },
   });
 
@@ -71,6 +77,10 @@ export const useTournamentMutations = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['tournamentParticipants', variables.tournamentId] });
+      console.log('Successfully unregistered from tournament');
+    },
+    onError: (error) => {
+      console.error('Failed to unregister from tournament:', error);
     },
   });
 

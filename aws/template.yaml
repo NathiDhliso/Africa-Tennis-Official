@@ -260,6 +260,54 @@ Resources:
             Path: /health
             Method: get
 
+  # AI Systems Status Function
+  AISystemsStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/ai-systems-status/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/ai-systems/status
+            Method: get
+            Auth:
+              Authorizer: 'NONE'
+
+  # Match Analytics Function
+  MatchAnalyticsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/match-analytics/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/match-analytics/{matchId}
+            Method: get
+            Auth:
+              Authorizer: 'NONE'
+
+  # Match Performance Function
+  MatchPerformanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/lambdas/match-performance/
+      Handler: index.handler
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /api/match-performance/{matchId}
+            Method: get
+            Auth:
+              Authorizer: 'NONE'
+
   # Video Processing Functions
   
   # S3 Bucket for video storage

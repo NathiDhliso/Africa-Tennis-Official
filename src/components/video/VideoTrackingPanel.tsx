@@ -29,6 +29,11 @@ interface BackendAnalysisResult {
     lines: any[];
     regions: any;
     confidence: number;
+    perspective?: {
+      viewAngle?: number;
+      distortion?: number;
+      homographyMatrix?: number[][];
+    };
   };
   highlights: Array<{
     startTime: number;
@@ -101,6 +106,13 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     sidelines: { left: number[]; right: number[] };
     net: number[];
     confidence: number;
+    alignment?: {
+      baselines: boolean[];
+      serviceLines: boolean[];
+      sidelines: boolean[];
+      centerLine: boolean;
+      netLine: boolean;
+    };
   }>({
     detected: false,
     baseline: { top: [], bottom: [] },
@@ -116,6 +128,8 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     rightServiceBox: { x: 0, y: 0, width: 0, height: 0 },
     deuceServiceBox: { x: 0, y: 0, width: 0, height: 0 },
     adServiceBox: { x: 0, y: 0, width: 0, height: 0 },
+    leftCourt: { x: 0, y: 0, width: 0, height: 0 },
+    rightCourt: { x: 0, y: 0, width: 0, height: 0 },
     baseline: { player1: 0, player2: 0 },
     netHeight: 91.4, // cm
     courtBounds: { minX: 0, maxX: 0, minY: 0, maxY: 0 }
@@ -197,7 +211,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     const playerMovements = result.playerPositions.flatMap(pos => 
       pos.players.map(player => {
         // Calculate movement speed based on position changes
-        return Math.random() * 5; // Placeholder calculation
+        return 0; // Will be calculated from actual position data
       })
     );
     const avgPlayerMovement = playerMovements.length > 0 ? playerMovements.reduce((a, b) => a + b, 0) / playerMovements.length : 0;
@@ -211,6 +225,39 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
       shotType: result.highlights.length > 0 ? result.highlights[0].type : 'Unknown',
       ballPosition: result.ballTracking.length > 0 ? (result.ballTracking[result.ballTracking.length - 1].inBounds ? 'In' : 'Out') : 'Unknown'
     }));
+
+    // Update court lines from backend detection
+    if (result.courtDetection && result.courtDetection.confidence > 0.5) {
+      setCourtLines({
+        detected: true,
+        baseline: {
+          top: result.courtDetection.lines?.find((line: any) => line.type === 'baseline_top')?.coordinates || [],
+          bottom: result.courtDetection.lines?.find((line: any) => line.type === 'baseline_bottom')?.coordinates || []
+        },
+        serviceLine: {
+          top: result.courtDetection.lines?.find((line: any) => line.type === 'service_top')?.coordinates || [],
+          bottom: result.courtDetection.lines?.find((line: any) => line.type === 'service_bottom')?.coordinates || []
+        },
+        centerServiceLine: result.courtDetection.lines?.find((line: any) => line.type === 'center_service')?.coordinates || [],
+        sidelines: {
+          left: result.courtDetection.lines?.find((line: any) => line.type === 'sideline_left')?.coordinates || [],
+          right: result.courtDetection.lines?.find((line: any) => line.type === 'sideline_right')?.coordinates || []
+        },
+        net: result.courtDetection.lines?.find((line: any) => line.type === 'net')?.coordinates || [],
+        confidence: result.courtDetection.confidence
+      });
+
+      // Update court regions from backend detection
+      if (result.courtDetection.regions) {
+        setCourtRegions(prev => ({
+          ...prev,
+          leftServiceBox: result.courtDetection.regions.leftServiceBox || { x: 0, y: 0, width: 0, height: 0 },
+          rightServiceBox: result.courtDetection.regions.rightServiceBox || { x: 0, y: 0, width: 0, height: 0 },
+          leftCourt: result.courtDetection.regions.leftCourt || { x: 0, y: 0, width: 0, height: 0 },
+          rightCourt: result.courtDetection.regions.rightCourt || { x: 0, y: 0, width: 0, height: 0 }
+        }));
+      }
+    }
 
     // Update detected objects based on analysis
     const objects = [
@@ -232,6 +279,9 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     setIsBackendProcessing(true);
     setProcessingProgress(0);
 
+    // Progress interval for UI updates
+    let progressInterval: NodeJS.Timeout | null = null;
+
     try {
       const { user } = useAuthStore.getState();
       if (!user) {
@@ -242,16 +292,8 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
       const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
       const originalSize = videoBlob.size;
       
-      // Simulate processing progress
-      const progressInterval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 500);
+      // Real processing will be handled by backend
+      // Progress updates will come from actual Lambda function responses
 
       // Process video with backend service
       const result = await videoProcessingService.processVideoUpload(
@@ -266,7 +308,9 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
         }
       );
 
-      clearInterval(progressInterval);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setProcessingProgress(100);
 
       // Store compression stats
@@ -372,6 +416,226 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     }
   }, [capturing, recordingInterval]);
 
+  // Real-time court detection from live video feed
+  const detectCourtInLiveVideo = useCallback(async () => {
+    const video = webcamRef.current?.video;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    try {
+      // Create a canvas to capture current video frame
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = video.videoWidth;
+      tempCanvas.height = video.videoHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) return;
+      
+      // Draw current video frame
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      
+      // Get image data for analysis
+      const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      
+      // Simple edge detection for court lines
+      const edges = detectEdges(imageData);
+      const lines = detectLines(edges, tempCanvas.width, tempCanvas.height);
+      
+      if (lines.length > 4) { // Need at least 4 lines for a basic court
+        const classifiedLines = classifyCourtLines(lines, tempCanvas.width, tempCanvas.height);
+        
+        setCourtLines({
+          detected: true,
+          baseline: {
+            top: classifiedLines.baselines[0] || [],
+            bottom: classifiedLines.baselines[1] || []
+          },
+          serviceLine: {
+            top: classifiedLines.serviceLines[0] || [],
+            bottom: classifiedLines.serviceLines[1] || []
+          },
+          centerServiceLine: classifiedLines.centerLine || [],
+          sidelines: {
+            left: classifiedLines.sidelines[0] || [],
+            right: classifiedLines.sidelines[1] || []
+          },
+          net: classifiedLines.netLine || [],
+          confidence: Math.min(0.9, lines.length / 10), // Simple confidence based on line count
+          alignment: classifiedLines.alignment // Store alignment information
+        });
+      }
+    } catch (error) {
+      console.error('Error in live court detection:', error);
+    }
+  }, []);
+
+  // Simple edge detection function
+  const detectEdges = (imageData: ImageData): ImageData => {
+    const { data, width, height } = imageData;
+    const edges = new ImageData(width, height);
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        
+        // Convert to grayscale
+        const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        
+        // Simple Sobel edge detection
+        const gx = 
+          -1 * data[((y - 1) * width + (x - 1)) * 4] +
+           1 * data[((y - 1) * width + (x + 1)) * 4] +
+          -2 * data[(y * width + (x - 1)) * 4] +
+           2 * data[(y * width + (x + 1)) * 4] +
+          -1 * data[((y + 1) * width + (x - 1)) * 4] +
+           1 * data[((y + 1) * width + (x + 1)) * 4];
+           
+        const gy = 
+          -1 * data[((y - 1) * width + (x - 1)) * 4] +
+          -2 * data[((y - 1) * width + x) * 4] +
+          -1 * data[((y - 1) * width + (x + 1)) * 4] +
+           1 * data[((y + 1) * width + (x - 1)) * 4] +
+           2 * data[((y + 1) * width + x) * 4] +
+           1 * data[((y + 1) * width + (x + 1)) * 4];
+           
+        const magnitude = Math.sqrt(gx * gx + gy * gy);
+        const edgeValue = magnitude > 50 ? 255 : 0;
+        
+        edges.data[idx] = edgeValue;
+        edges.data[idx + 1] = edgeValue;
+        edges.data[idx + 2] = edgeValue;
+        edges.data[idx + 3] = 255;
+      }
+    }
+    
+    return edges;
+  };
+
+  // Simple line detection using Hough transform concept
+  const detectLines = (edges: ImageData, width: number, height: number): number[][] => {
+    const lines: number[][] = [];
+    const threshold = 30;
+    
+    // Simplified line detection - look for horizontal and vertical edges
+    for (let y = 0; y < height; y += 10) {
+      let lineStart = -1;
+      let lineLength = 0;
+      
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        if (edges.data[idx] > 128) {
+          if (lineStart === -1) lineStart = x;
+          lineLength++;
+        } else {
+          if (lineLength > threshold && lineStart !== -1) {
+            lines.push([lineStart, y, lineStart + lineLength, y]);
+          }
+          lineStart = -1;
+          lineLength = 0;
+        }
+      }
+    }
+    
+    // Vertical lines
+    for (let x = 0; x < width; x += 10) {
+      let lineStart = -1;
+      let lineLength = 0;
+      
+      for (let y = 0; y < height; y++) {
+        const idx = (y * width + x) * 4;
+        if (edges.data[idx] > 128) {
+          if (lineStart === -1) lineStart = y;
+          lineLength++;
+        } else {
+          if (lineLength > threshold && lineStart !== -1) {
+            lines.push([x, lineStart, x, lineStart + lineLength]);
+          }
+          lineStart = -1;
+          lineLength = 0;
+        }
+      }
+    }
+    
+    return lines;
+  };
+
+  // Check if a line is properly aligned with expected court geometry
+  const isLineProperlyAligned = (line: number[], expectedLine: number[], tolerance: number = 20): boolean => {
+    if (!line || !expectedLine || line.length < 4 || expectedLine.length < 4) return false;
+    
+    // Calculate distance between line endpoints and expected line endpoints
+    const startDistance = Math.sqrt(
+      Math.pow(line[0] - expectedLine[0], 2) + Math.pow(line[1] - expectedLine[1], 2)
+    );
+    const endDistance = Math.sqrt(
+      Math.pow(line[2] - expectedLine[2], 2) + Math.pow(line[3] - expectedLine[3], 2)
+    );
+    
+    // Check if both endpoints are within tolerance
+    return startDistance <= tolerance && endDistance <= tolerance;
+  };
+
+  // Calculate expected court line positions based on standard tennis court proportions
+  const getExpectedCourtLines = (width: number, height: number) => {
+    const courtWidth = width * 0.8;
+    const courtHeight = height * 0.7;
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
+    const courtLeft = centerX - courtWidth * 0.5;
+    const courtRight = centerX + courtWidth * 0.5;
+    const courtTop = centerY - courtHeight * 0.5;
+    const courtBottom = centerY + courtHeight * 0.5;
+    
+    return {
+      baselines: [
+        [courtLeft, courtTop, courtRight, courtTop], // Top baseline
+        [courtLeft, courtBottom, courtRight, courtBottom] // Bottom baseline
+      ],
+      serviceLines: [
+        [courtLeft, courtTop + courtHeight * 0.25, courtRight, courtTop + courtHeight * 0.25], // Top service line
+        [courtLeft, courtBottom - courtHeight * 0.25, courtRight, courtBottom - courtHeight * 0.25] // Bottom service line
+      ],
+      sidelines: [
+        [courtLeft, courtTop, courtLeft, courtBottom], // Left sideline
+        [courtRight, courtTop, courtRight, courtBottom] // Right sideline
+      ],
+      centerLine: [centerX, courtTop + courtHeight * 0.25, centerX, courtBottom - courtHeight * 0.25],
+      netLine: [courtLeft, centerY, courtRight, centerY]
+    };
+  };
+
+  // Classify detected lines into court components with alignment checking
+  const classifyCourtLines = (lines: number[][], width: number, height: number) => {
+    const horizontalLines = lines.filter(line => Math.abs(line[1] - line[3]) < 10).sort((a, b) => a[1] - b[1]);
+    const verticalLines = lines.filter(line => Math.abs(line[0] - line[2]) < 10).sort((a, b) => a[0] - b[0]);
+    const expectedLines = getExpectedCourtLines(width, height);
+    
+    const classifiedLines = {
+      baselines: [horizontalLines[0], horizontalLines[horizontalLines.length - 1]].filter(Boolean),
+      serviceLines: horizontalLines.slice(1, -1),
+      sidelines: [verticalLines[0], verticalLines[verticalLines.length - 1]].filter(Boolean),
+      centerLine: verticalLines[Math.floor(verticalLines.length / 2)],
+      netLine: horizontalLines[Math.floor(horizontalLines.length / 2)]
+    };
+    
+    // Add alignment status to each line type
+    return {
+      ...classifiedLines,
+      alignment: {
+        baselines: classifiedLines.baselines.map((line, index) => 
+          isLineProperlyAligned(line, expectedLines.baselines[index])
+        ),
+        serviceLines: classifiedLines.serviceLines.map((line, index) => 
+          isLineProperlyAligned(line, expectedLines.serviceLines[index])
+        ),
+        sidelines: classifiedLines.sidelines.map((line, index) => 
+          isLineProperlyAligned(line, expectedLines.sidelines[index])
+        ),
+        centerLine: isLineProperlyAligned(classifiedLines.centerLine, expectedLines.centerLine),
+        netLine: isLineProperlyAligned(classifiedLines.netLine, expectedLines.netLine)
+      }
+    };
+  };
+
   // Basic tracking for visual feedback (no AI processing)
   const startTracking = useCallback(() => {
     const canvas = canvasRef.current;
@@ -386,6 +650,9 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     canvas.width = video.videoWidth || 1280;
     canvas.height = video.videoHeight || 720;
 
+    // Start live court detection
+    const courtDetectionInterval = setInterval(detectCourtInLiveVideo, 2000); // Every 2 seconds
+
     const track = () => {
       if (!isVisible || !isIntersecting) return;
       
@@ -393,7 +660,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Draw basic court guidelines if enabled
+        // Draw court guidelines if enabled
         if (showGuidelines) {
           drawCourtGuidelines(ctx);
         }
@@ -403,26 +670,28 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
           drawRecordingOverlay(ctx);
         }
         
-        // Simulate tracking stats for UI feedback when tracking is active
-        if (isTracking) {
-          setTrackingStats(prev => ({
-            ...prev,
-            ballSpeed: Math.random() * 100 + 50,
-            playerMovement: Math.random() * 3 + 1,
-            rallyLength: Math.floor(Math.random() * 20) + 1,
-            shotType: ['Forehand', 'Backhand', 'Serve', 'Volley'][Math.floor(Math.random() * 4)]
-          }));
-        }
+        // Real tracking stats will be updated from backend analysis
+        // No mock data generation during live tracking
         
         animationFrameRef.current = requestAnimationFrame(track);
       } catch (err) {
         console.error('Error during tracking:', err);
         setError('Tracking error occurred. Please try again.');
         setIsTracking(false);
+        if (courtDetectionInterval) {
+          clearInterval(courtDetectionInterval);
+        }
       }
     };
 
     track();
+    
+    // Cleanup function
+    return () => {
+      if (courtDetectionInterval) {
+        clearInterval(courtDetectionInterval);
+      }
+    };
   }, [isTracking, isVisible, isIntersecting, capturing, showGuidelines]);
 
   // Start visual overlay immediately when component mounts
@@ -454,45 +723,303 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
   }, [showGuidelines]);
 
   // Draw basic court guidelines
+  // Apply perspective transformation to court coordinates
+  const applyPerspectiveTransform = (points: number[][], homographyMatrix?: number[][]): number[][] => {
+    if (!homographyMatrix || homographyMatrix.length !== 3) {
+      return points; // Return original points if no valid homography
+    }
+    
+    return points.map(([x, y]) => {
+      const h = homographyMatrix;
+      const w = h[2][0] * x + h[2][1] * y + h[2][2];
+      const newX = (h[0][0] * x + h[0][1] * y + h[0][2]) / w;
+      const newY = (h[1][0] * x + h[1][1] * y + h[1][2]) / w;
+      return [newX, newY];
+    });
+  };
+
+  // Calculate perspective-corrected court lines based on camera angle
+  const calculatePerspectiveCourtLines = (width: number, height: number) => {
+    // Estimate camera perspective based on court detection or use default
+    const viewAngle = analysisResult?.courtDetection?.perspective?.viewAngle || 45; // degrees
+    const distortion = analysisResult?.courtDetection?.perspective?.distortion || 0.3;
+    
+    // Tennis court real dimensions (in relative units)
+    const courtLength = 0.8; // 80% of screen width
+    const courtWidth = 0.6;  // 60% of screen height
+    
+    // Calculate perspective scaling factors
+    const perspectiveScale = Math.cos(viewAngle * Math.PI / 180);
+    const depthFactor = 1 - distortion;
+    
+    // Base court coordinates (center of screen)
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
+    
+    // Calculate court corners with perspective
+    const nearWidth = courtLength * width * 0.5;
+    const farWidth = nearWidth * perspectiveScale * depthFactor;
+    const nearY = centerY + (courtWidth * height * 0.25);
+    const farY = centerY - (courtWidth * height * 0.25 * perspectiveScale);
+    
+    return {
+      // Court boundaries (trapezoid shape for perspective)
+      boundaries: [
+        [centerX - farWidth, farY],      // Top-left
+        [centerX + farWidth, farY],      // Top-right
+        [centerX + nearWidth, nearY],    // Bottom-right
+        [centerX - nearWidth, nearY],    // Bottom-left
+        [centerX - farWidth, farY]       // Close the shape
+      ],
+      
+      // Net line (horizontal across middle)
+      net: [
+        [centerX - (nearWidth + farWidth) * 0.5, centerY],
+        [centerX + (nearWidth + farWidth) * 0.5, centerY]
+      ],
+      
+      // Service lines (parallel to net)
+      serviceLines: {
+        near: [
+          [centerX - nearWidth * 0.8, centerY + (nearY - centerY) * 0.5],
+          [centerX + nearWidth * 0.8, centerY + (nearY - centerY) * 0.5]
+        ],
+        far: [
+          [centerX - farWidth * 0.8, centerY + (farY - centerY) * 0.5],
+          [centerX + farWidth * 0.8, centerY + (farY - centerY) * 0.5]
+        ]
+      },
+      
+      // Center service line (vertical)
+      centerServiceLine: [
+        [centerX, centerY + (farY - centerY) * 0.5],
+        [centerX, centerY + (nearY - centerY) * 0.5]
+      ],
+      
+      // Sidelines (perspective trapezoid sides)
+      sidelines: {
+        left: [
+          [centerX - farWidth, farY],
+          [centerX - nearWidth, nearY]
+        ],
+        right: [
+          [centerX + farWidth, farY],
+          [centerX + nearWidth, nearY]
+        ]
+      }
+    };
+  };
+
   const drawCourtGuidelines = (ctx: CanvasRenderingContext2D) => {
     ctx.save();
-    
-    // Make guidelines more visible
-    ctx.strokeStyle = '#00FFAA';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([]);
     
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
     
-    // Draw basic court outline (main rectangle)
-    ctx.strokeRect(width * 0.1, height * 0.2, width * 0.8, height * 0.6);
-    
-    // Draw center line
-    ctx.beginPath();
-    ctx.moveTo(width * 0.5, height * 0.2);
-    ctx.lineTo(width * 0.5, height * 0.8);
-    ctx.stroke();
-    
-    // Draw service line (net area)
-    ctx.beginPath();
-    ctx.moveTo(width * 0.1, height * 0.5);
-    ctx.lineTo(width * 0.9, height * 0.5);
-    ctx.stroke();
-    
-    // Draw service boxes
-    ctx.strokeStyle = '#FFD700';
-    ctx.lineWidth = 2;
-    
-    // Left service box
-    ctx.strokeRect(width * 0.1, height * 0.35, width * 0.4, height * 0.15);
-    // Right service box  
-    ctx.strokeRect(width * 0.5, height * 0.35, width * 0.4, height * 0.15);
-    
-    // Add labels
-    ctx.fillStyle = '#00FFAA';
-    ctx.font = '16px Arial';
-    ctx.fillText('Tennis Court Guidelines', width * 0.02, height * 0.15);
+    // Check if we have real court detection data with perspective
+    if (analysisResult?.courtDetection && analysisResult.courtDetection.confidence > 0.5) {
+      // Use actual court detection data with perspective correction
+      const court = analysisResult.courtDetection;
+      const homographyMatrix = court.perspective?.homographyMatrix;
+      
+      ctx.strokeStyle = '#00FFAA';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      
+      // Draw court boundaries with perspective correction
+      if (court.lines && court.lines.length > 0) {
+        court.lines.forEach((line: any) => {
+          if (line.confidence > 0.7) {
+            // Apply perspective transformation if available
+            const points = [[line.x1, line.y1], [line.x2, line.y2]];
+            const transformedPoints = applyPerspectiveTransform(points, homographyMatrix);
+            
+            ctx.beginPath();
+            ctx.moveTo(transformedPoints[0][0], transformedPoints[0][1]);
+            ctx.lineTo(transformedPoints[1][0], transformedPoints[1][1]);
+            ctx.stroke();
+          }
+        });
+      }
+      
+      // Draw service boxes with perspective
+      if (court.regions?.serviceBoxes) {
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2;
+        
+        Object.values(court.regions.serviceBoxes).forEach((box: any) => {
+          if (box.x && box.y && box.width && box.height) {
+            // Transform rectangle corners
+            const corners = [
+              [box.x, box.y],
+              [box.x + box.width, box.y],
+              [box.x + box.width, box.y + box.height],
+              [box.x, box.y + box.height]
+            ];
+            const transformedCorners = applyPerspectiveTransform(corners, homographyMatrix);
+            
+            // Draw transformed rectangle
+            ctx.beginPath();
+            ctx.moveTo(transformedCorners[0][0], transformedCorners[0][1]);
+            transformedCorners.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+            ctx.closePath();
+            ctx.stroke();
+          }
+        });
+      }
+      
+      // Add confidence indicator
+      ctx.fillStyle = '#00FFAA';
+      ctx.font = '16px Arial';
+      ctx.fillText(`3D Court Detected (${Math.round(court.confidence * 100)}%)`, width * 0.02, height * 0.15);
+      
+    } else if (courtLines.detected && courtLines.confidence > 0.5) {
+      // Use frontend court detection data with alignment-based coloring
+      const perspectiveLines = calculatePerspectiveCourtLines(width, height);
+      const alignment = courtLines.alignment;
+      
+      // Draw baselines with alignment-based coloring
+      if (courtLines.baseline?.top && courtLines.baseline.top.length >= 4) {
+        ctx.strokeStyle = alignment?.baselines?.[0] ? '#00FF00' : '#00FFAA'; // Green if aligned, cyan if not
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.baseline.top[0], courtLines.baseline.top[1]);
+        ctx.lineTo(courtLines.baseline.top[2], courtLines.baseline.top[3]);
+        ctx.stroke();
+      }
+      
+      if (courtLines.baseline?.bottom && courtLines.baseline.bottom.length >= 4) {
+        ctx.strokeStyle = alignment?.baselines?.[1] ? '#00FF00' : '#00FFAA'; // Green if aligned, cyan if not
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.baseline.bottom[0], courtLines.baseline.bottom[1]);
+        ctx.lineTo(courtLines.baseline.bottom[2], courtLines.baseline.bottom[3]);
+        ctx.stroke();
+      }
+      
+      // Draw service lines with alignment-based coloring
+      if (courtLines.serviceLine?.top && courtLines.serviceLine.top.length >= 4) {
+        ctx.strokeStyle = alignment?.serviceLines?.[0] ? '#00FF00' : '#FFD700'; // Green if aligned, yellow if not
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.serviceLine.top[0], courtLines.serviceLine.top[1]);
+        ctx.lineTo(courtLines.serviceLine.top[2], courtLines.serviceLine.top[3]);
+        ctx.stroke();
+      }
+      
+      if (courtLines.serviceLine?.bottom && courtLines.serviceLine.bottom.length >= 4) {
+        ctx.strokeStyle = alignment?.serviceLines?.[1] ? '#00FF00' : '#FFD700'; // Green if aligned, yellow if not
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.serviceLine.bottom[0], courtLines.serviceLine.bottom[1]);
+        ctx.lineTo(courtLines.serviceLine.bottom[2], courtLines.serviceLine.bottom[3]);
+        ctx.stroke();
+      }
+      
+      // Draw center service line with alignment-based coloring
+      if (courtLines.centerServiceLine && courtLines.centerServiceLine.length >= 4) {
+        ctx.strokeStyle = alignment?.centerLine ? '#00FF00' : '#FFD700'; // Green if aligned, yellow if not
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.centerServiceLine[0], courtLines.centerServiceLine[1]);
+        ctx.lineTo(courtLines.centerServiceLine[2], courtLines.centerServiceLine[3]);
+        ctx.stroke();
+      }
+      
+      // Draw sidelines with alignment-based coloring
+      if (courtLines.sidelines?.left && courtLines.sidelines.left.length >= 4) {
+        ctx.strokeStyle = alignment?.sidelines?.[0] ? '#00FF00' : '#00FFAA'; // Green if aligned, cyan if not
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.sidelines.left[0], courtLines.sidelines.left[1]);
+        ctx.lineTo(courtLines.sidelines.left[2], courtLines.sidelines.left[3]);
+        ctx.stroke();
+      }
+      
+      if (courtLines.sidelines?.right && courtLines.sidelines.right.length >= 4) {
+        ctx.strokeStyle = alignment?.sidelines?.[1] ? '#00FF00' : '#00FFAA'; // Green if aligned, cyan if not
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.sidelines.right[0], courtLines.sidelines.right[1]);
+        ctx.lineTo(courtLines.sidelines.right[2], courtLines.sidelines.right[3]);
+        ctx.stroke();
+      }
+      
+      // Draw net line with alignment-based coloring
+      if (courtLines.net && courtLines.net.length >= 4) {
+        ctx.strokeStyle = alignment?.netLine ? '#00FF00' : '#FF6B6B'; // Green if aligned, red if not
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(courtLines.net[0], courtLines.net[1]);
+        ctx.lineTo(courtLines.net[2], courtLines.net[3]);
+        ctx.stroke();
+      }
+      
+      // Add confidence and alignment indicator
+      ctx.fillStyle = '#00FFAA';
+      ctx.font = '16px Arial';
+      const alignedCount = Object.values(alignment || {}).flat().filter(Boolean).length;
+      const totalLines = Object.values(alignment || {}).flat().length;
+      ctx.fillText(`Court Lines (${Math.round(courtLines.confidence * 100)}%) - ${alignedCount}/${totalLines} Aligned`, width * 0.02, height * 0.15);
+      
+    } else {
+      // Fallback to perspective-aware generic court guidelines
+      const perspectiveLines = calculatePerspectiveCourtLines(width, height);
+      
+      ctx.strokeStyle = '#00FFAA';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]); // Dashed lines to indicate these are generic
+      
+      // Draw court boundaries as trapezoid
+      ctx.beginPath();
+      ctx.moveTo(perspectiveLines.boundaries[0][0], perspectiveLines.boundaries[0][1]);
+      perspectiveLines.boundaries.slice(1).forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.stroke();
+      
+      // Draw net line
+      ctx.strokeStyle = '#FF6B6B';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(perspectiveLines.net[0][0], perspectiveLines.net[0][1]);
+      ctx.lineTo(perspectiveLines.net[1][0], perspectiveLines.net[1][1]);
+      ctx.stroke();
+      
+      // Draw service lines
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      
+      // Service lines
+      ctx.beginPath();
+      ctx.moveTo(perspectiveLines.serviceLines.near[0][0], perspectiveLines.serviceLines.near[0][1]);
+      ctx.lineTo(perspectiveLines.serviceLines.near[1][0], perspectiveLines.serviceLines.near[1][1]);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(perspectiveLines.serviceLines.far[0][0], perspectiveLines.serviceLines.far[0][1]);
+      ctx.lineTo(perspectiveLines.serviceLines.far[1][0], perspectiveLines.serviceLines.far[1][1]);
+      ctx.stroke();
+      
+      // Center service line
+      ctx.beginPath();
+      ctx.moveTo(perspectiveLines.centerServiceLine[0][0], perspectiveLines.centerServiceLine[0][1]);
+      ctx.lineTo(perspectiveLines.centerServiceLine[1][0], perspectiveLines.centerServiceLine[1][1]);
+      ctx.stroke();
+      
+      // Add labels
+      ctx.fillStyle = '#FFA500';
+      ctx.font = '16px Arial';
+      ctx.fillText('3D Court Guidelines (Generic)', width * 0.02, height * 0.15);
+    }
     
     ctx.restore();
   };
@@ -651,7 +1178,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
             ) : (
               <>
                 <Webcam
-                  audio={true}
+                  audio={false}
                   ref={webcamRef}
                   className="video-preview"
                   videoConstraints={{
@@ -705,6 +1232,38 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
               <Target className="h-4 w-4" />
               {showGuidelines ? 'Guidelines ON' : 'Guidelines OFF'}
             </button>
+          </div>
+
+          {/* Court Detection Status */}
+          <div className="mb-4 flex justify-center">
+            <div className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${
+              courtLines.detected && courtLines.confidence > 0.7
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : courtLines.detected && courtLines.confidence > 0.4
+                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              <div className={`w-3 h-3 rounded-full ${
+                courtLines.detected && courtLines.confidence > 0.7
+                  ? 'bg-green-500 animate-pulse'
+                  : courtLines.detected && courtLines.confidence > 0.4
+                  ? 'bg-yellow-500 animate-pulse'
+                  : 'bg-red-500'
+              }`}></div>
+              <span>
+                {courtLines.detected && courtLines.confidence > 0.7
+                  ? `Court Detected (${Math.round(courtLines.confidence * 100)}%)`
+                  : courtLines.detected && courtLines.confidence > 0.4
+                  ? `Partial Detection (${Math.round(courtLines.confidence * 100)}%)`
+                  : 'No Court Detection'
+                }
+              </span>
+              {analysisResult?.courtDetection && (
+                <span className="text-xs opacity-75">
+                  • Backend Enhanced
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="video-controls">

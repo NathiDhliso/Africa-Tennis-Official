@@ -1,0 +1,18 @@
+{
+  "name": "ai-systems-status",
+  "version": "1.0.0",
+  "description": "Lambda function to provide AI systems status and metrics",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.130",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.3.0"
+  }
+}

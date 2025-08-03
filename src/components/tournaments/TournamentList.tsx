@@ -18,8 +18,23 @@ export const TournamentList: React.FC = () => {
   const navigate = useNavigate();
 
   const handleRegister = (tournamentId: string) => {
-    if (!user) return;
-    registerForTournament.mutate({ tournamentId, playerId: user.id });
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+    
+    console.log('Attempting to register for tournament:', tournamentId);
+    registerForTournament.mutate(
+      { tournamentId, playerId: user.id },
+      {
+        onSuccess: () => {
+          console.log('Registration successful!');
+        },
+        onError: (error) => {
+          console.error('Registration failed:', error);
+        }
+      }
+    );
   };
 
   const handleCreateTournament = () => {
@@ -27,6 +42,7 @@ export const TournamentList: React.FC = () => {
   };
 
   const handleViewDetails = (tournamentId: string) => {
+    console.log('Navigating to tournament details:', tournamentId);
     navigate(`/tournaments/${tournamentId}`);
   };
 
@@ -194,8 +210,13 @@ export const TournamentList: React.FC = () => {
               {/* Action Buttons */}
               <div className="tournament-card-actions">
                 <button 
-                  onClick={() => handleViewDetails(tournament.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleViewDetails(tournament.id);
+                  }}
                   className="tournament-card-btn tournament-card-btn-secondary"
+                  type="button"
                 >
                   Details
                 </button>
@@ -204,9 +225,14 @@ export const TournamentList: React.FC = () => {
                   !tournament.isRegistered &&
                   !(tournament.participantCount && tournament.max_participants && tournament.participantCount >= tournament.max_participants) && (
                     <button
-                      onClick={() => handleRegister(tournament.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRegister(tournament.id);
+                      }}
                       className="tournament-card-btn tournament-card-btn-primary"
                       disabled={registerForTournament.isPending}
+                      type="button"
                     >
                       {registerForTournament.isPending ? 'Registering...' : 'Register'}
                     </button>

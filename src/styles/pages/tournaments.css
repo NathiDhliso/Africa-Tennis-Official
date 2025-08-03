@@ -293,10 +293,17 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   border: none;
   flex: 1;
   min-height: 40px;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  text-decoration: none;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tournament-card-btn-primary {
@@ -321,6 +328,23 @@
   border-color: var(--border-primary);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px var(--shadow-standard);
+}
+
+.tournament-card-btn:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+.tournament-card-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.tournament-card-btn:focus {
+  outline: 2px solid var(--quantum-cyan);
+  outline-offset: 2px;
 }
 
 .tournaments-empty {

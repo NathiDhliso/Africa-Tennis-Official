@@ -61,8 +61,8 @@ export const Dashboard: React.FC = () => {
   };
 
   const winRate = profile ? 
-    (profile.matches_played > 0 ? 
-      (profile.matches_won / profile.matches_played * 100).toFixed(1) : 
+    ((profile.matches_played || 0) > 0 ?
+      ((profile.matches_won || 0) / (profile.matches_played || 1) * 100).toFixed(1) : 
       '0.0') : 
     '0.0';
 

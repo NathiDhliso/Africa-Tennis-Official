@@ -14,13 +14,12 @@ const OnboardingPage: React.FC = () => {
 
     setIsLoading(true);
     
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     updateProfile({
       username: name.trim(),
       skill_level: skillLevel.toLowerCase() as 'beginner' | 'intermediate' | 'advanced',
     });
+    
+    setIsLoading(false);
   };
 
   const skillLevels = [

@@ -89,7 +89,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 
     const filtered = availablePlayers.filter(player =>
       player.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      player.skill_level.toLowerCase().includes(searchQuery.toLowerCase())
+      player.skill_level?.toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 8);
 
     setFilteredPlayers(filtered);
@@ -243,7 +243,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                     </div>
                     <div className="match-player-details">
                       <div className="match-player-name">{selectedPlayer.username}</div>
-                      <div className={`rating-badge ${getRatingClass(selectedPlayer.skill_level)}`}>
+                      <div className={`rating-badge ${getRatingClass(selectedPlayer.skill_level || 'beginner')}`}>
                         {selectedPlayer.skill_level} • Rating: {selectedPlayer.elo_rating}
                       </div>
                     </div>

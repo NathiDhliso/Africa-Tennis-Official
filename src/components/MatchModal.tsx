@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, MapPin, Users, Clock, Target, Search, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { User as UserType } from '../types';
 
 interface MatchModalProps {
@@ -38,10 +39,34 @@ const MatchModal: React.FC<MatchModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadAvailablePlayers = useCallback(async () => {
-    // Mock players for now - replace with actual service call
-    const mockPlayers: UserType[] = [];
-    const filtered = mockPlayers.filter((player: UserType) => player.id !== user?.id);
-    setAvailablePlayers(filtered);
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('user_id', user?.id || '')
+        .order('username');
+      
+      if (error) {
+        console.error('Error loading players:', error);
+        setAvailablePlayers([]);
+        return;
+      }
+      
+      const players: UserType[] = profiles?.map(profile => ({
+        id: profile.user_id,
+        username: profile.username,
+        name: profile.username,
+        email: '', // Email not available in profiles table
+        elo_rating: profile.elo_rating,
+        skill_level: profile.skill_level,
+        profile_picture_url: profile.profile_picture_url
+      })) || [];
+      
+      setAvailablePlayers(players);
+    } catch (error) {
+      console.error('Error loading players:', error);
+      setAvailablePlayers([]);
+    }
   }, [user]);
 
   const filterPlayers = useCallback(() => {

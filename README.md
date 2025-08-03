@@ -118,7 +118,7 @@ To deploy the Lambda functions:
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22+
 - A Supabase account
 - An AWS account (for deploying Lambda functions)
 - Sentry account (optional, for error tracking)

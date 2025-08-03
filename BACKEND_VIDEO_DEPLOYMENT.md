@@ -47,7 +47,7 @@ This guide covers the deployment of the new video processing Lambda functions th
 ### Prerequisites
 1. AWS CLI configured with appropriate permissions
 2. SAM CLI installed
-3. Node.js 18+ for Lambda runtime
+3. Node.js 22+ for Lambda runtime
 4. S3 bucket permissions for video storage
 
 ### 1. Install Dependencies
@@ -170,4 +170,4 @@ The backend video processing system provides:
 - **Advanced AI analysis** with server-grade models
 - **Cost-effective** pay-per-use pricing
 
-This architecture enables the Africa Tennis Platform to handle high-quality video analysis while maintaining excellent user experience and manageable costs. 
+This architecture enables the Africa Tennis Platform to handle high-quality video analysis while maintaining excellent user experience and manageable costs.

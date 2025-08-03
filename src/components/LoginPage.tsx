@@ -60,8 +60,7 @@ const LoginPage: React.FC = () => {
     setMessage('');
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Actual login processing without artificial delay
       await signIn(email, password);
       setMessage('Login successful! Redirecting...');
     } catch (error) {

@@ -44,10 +44,31 @@ export function isMatchScore(score: Json | null): score is MatchScore & Json {
 export function scoreToString(score: Json | null): string {
   if (!score) return 'No score';
   if (typeof score === 'string') return score;
-  if (isMatchScore(score)) {
-    return score.sets.map(set => `${set.player1_games}-${set.player2_games}`).join(', ');
+  
+  // Try to handle the score object even if it doesn't perfectly match the type
+  if (typeof score === 'object' && !Array.isArray(score)) {
+    const s = score as Record<string, unknown>;
+    
+    // Check if it has sets array
+    if (Array.isArray(s.sets) && s.sets.length > 0) {
+      try {
+        return s.sets.map((set: any) => {
+          const p1Games = set.player1_games || set.player1 || 0;
+          const p2Games = set.player2_games || set.player2 || 0;
+          return `${p1Games}-${p2Games}`;
+        }).join(', ');
+      } catch (err) {
+        console.warn('Error formatting score sets:', err);
+      }
+    }
+    
+    // Fallback: try to extract any numeric values
+    if (s.player1_games !== undefined && s.player2_games !== undefined) {
+      return `${s.player1_games}-${s.player2_games}`;
+    }
   }
-  return 'Invalid score';
+  
+  return 'Score format error';
 }
 
 // Extended types with joined data (for queries with relationships)

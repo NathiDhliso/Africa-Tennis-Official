@@ -71,18 +71,22 @@ const MatchCard: React.FC<MatchCardProps> = ({
     } else if (match.score && typeof match.score === 'object') {
       // For JSONB score objects, format sets
       try {
-        const sets = match.score.sets || [];
-        if (sets.length === 0) return 'No sets played';
+        const scoreObj = match.score as any;
+        const sets = scoreObj.sets || [];
         
-        return sets.map((set: { player1_games: number; player2_games: number }) => 
-          `${set.player1_games}-${set.player2_games}`
-        ).join(', ');
+        if (sets.length === 0) return 'Match completed';
+        
+        return sets.map((set: any) => {
+          const p1Games = set.player1_games || set.player1 || 0;
+          const p2Games = set.player2_games || set.player2 || 0;
+          return `${p1Games}-${p2Games}`;
+        }).join(', ');
       } catch (err) {
         console.error('Error formatting score:', err);
         return 'Score unavailable';
       }
     }
-    return '';
+    return 'No score recorded';
   };
 
   if (!opponentProfile) {
