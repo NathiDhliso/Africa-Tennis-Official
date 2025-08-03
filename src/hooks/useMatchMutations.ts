@@ -3,7 +3,6 @@ import apiClient from '../lib/aws';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/supabase-generated';
 
-type MatchInsert = Database['public']['Tables']['matches']['Insert'];
 type MatchUpdate = Database['public']['Tables']['matches']['Update'];
 
 
