@@ -7,7 +7,10 @@ import viteCompression from 'vite-plugin-compression'
 export default defineConfig(({ mode }) => {
   return {
     plugins: [
-      react(),
+      react({
+        jsxRuntime: 'automatic',
+        jsxImportSource: 'react'
+      }),
       viteCompression({
         algorithm: 'gzip',
         ext: '.gz',
@@ -55,6 +58,11 @@ export default defineConfig(({ mode }) => {
             'data-vendor': ['@tanstack/react-query', 'zustand'],
             'ui-vendor': ['lucide-react'],
           }
+        },
+        external: [],
+        treeshake: {
+          preset: 'smallest',
+          moduleSideEffects: false
         }
       },
       target: 'es2020',
@@ -67,7 +75,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
-      dedupe: ['react', 'react-dom']
+      dedupe: ['react', 'react-dom', '@tanstack/react-query']
     },
     optimizeDeps: {
       include: [
