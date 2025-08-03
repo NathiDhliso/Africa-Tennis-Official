@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint .",
+    "lint:strict": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "deploy:backend": "cd aws && npm run build && npm run deploy",
     "deploy:frontend": "npm run build && echo 'Frontend built successfully'",

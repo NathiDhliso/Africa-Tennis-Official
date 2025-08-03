@@ -7,15 +7,15 @@ import LoadingSpinner from '../components/LoadingSpinner';
 const VideoTrackingPanel = lazy(() => import('../components/video/VideoTrackingPanel'));
 const VideoHighlightsList = lazy(() => import('../components/video/VideoHighlightsList'));
 
-// Local type to avoid conflict with global VideoHighlight definition
+// Local type to match VideoHighlight interface
 type Highlight = {
   id: string;
-  match_id: string;
+  match_id: string | null;
   timestamp: string;
   type: string;
-  description: string;
+  description: string | null;
   video_url: string;
-  created_at: string;
+  created_at: string | null;
   created_by?: string;
 };
 

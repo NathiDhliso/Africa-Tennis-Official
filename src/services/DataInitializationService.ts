@@ -33,7 +33,7 @@ export class DataInitializationService {
     try {
       console.log("Testing Supabase connection...");
       // Check if we have a valid Supabase connection
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .select('count', { count: 'exact', head: true });
       

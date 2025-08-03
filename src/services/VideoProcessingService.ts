@@ -276,20 +276,21 @@ class VideoProcessingService {
       });
 
       // Transform response to match expected interface
-      if (response.success && response.data) {
+      const typedResponse = response as { success: boolean; data?: any; error?: string };
+      if (typedResponse.success && typedResponse.data) {
         return {
-          videoUrl: response.data.videoUrl,
-          compressedSize: response.data.compressedSize,
-          compressionRatio: response.data.compressionRatio,
-          analysisResult: response.data.analysis ? {
-            ballTracking: response.data.analysis.ballTracking || [],
-            playerPositions: response.data.analysis.playerPositions || [],
-            courtDetection: response.data.analysis.courtDetection || { lines: [], regions: {}, confidence: 0 },
-            highlights: response.data.analysis.highlights || []
+          videoUrl: typedResponse.data.videoUrl,
+          compressedSize: typedResponse.data.compressedSize,
+          compressionRatio: typedResponse.data.compressionRatio,
+          analysisResult: typedResponse.data.analysis ? {
+            ballTracking: typedResponse.data.analysis.ballTracking || [],
+            playerPositions: typedResponse.data.analysis.playerPositions || [],
+            courtDetection: typedResponse.data.analysis.courtDetection || { lines: [], regions: {}, confidence: 0 },
+            highlights: typedResponse.data.analysis.highlights || []
           } : undefined
         };
       } else {
-        throw new Error(response.error || 'Video processing failed');
+        throw new Error(typedResponse.error || 'Video processing failed');
       }
     } catch (error) {
       console.error('Video processing error:', error);
@@ -319,7 +320,7 @@ class VideoProcessingService {
         }
       });
 
-      return response;
+      return response as TennisAnalysisResult;
     } catch (error) {
       console.error('Tennis analysis error:', error);
       return {
@@ -346,7 +347,7 @@ class VideoProcessingService {
         coachingFocus
       });
 
-      return response;
+      return response as VideoCoachingResult;
     } catch (error) {
       console.error('Video coaching error:', error);
       return {
@@ -421,7 +422,12 @@ class VideoProcessingService {
         processingId
       });
 
-      return response;
+      return response as {
+        status: 'processing' | 'completed' | 'failed';
+        progress: number;
+        result?: unknown;
+        error?: string;
+      };
     } catch (error) {
       console.error('Status check error:', error);
       return {
