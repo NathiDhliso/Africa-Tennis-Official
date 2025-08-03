@@ -1,0 +1,68 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Installing dependencies..."
+        - npm ci
+        - echo "Running TypeScript check..."
+        - npx tsc --noEmit
+    build:
+      commands:
+        - echo "Building the application..."
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .npm/**/*
+backend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Installing AWS CLI and SAM CLI..."
+        - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        - unzip awscliv2.zip
+        - sudo ./aws/install
+        - wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+        - unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
+        - sudo ./sam-installation/install
+        - echo "Installing backend dependencies..."
+        - cd aws && npm ci
+        - for dir in lambdas/*/; do if [ -f "$dir/package.json" ]; then echo "Installing dependencies for $dir" && cd "$dir" && npm ci && cd ../..; fi; done
+    build:
+      commands:
+        - echo "Building TypeScript backend..."
+        - cd aws && npm run build
+        - echo "Building SAM application..."
+        - sam build
+        - echo "Deploying to AWS..."
+        - sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides SupabaseUrl="$VITE_SUPABASE_URL" SupabaseServiceRoleKey="$SUPABASE_SERVICE_ROLE_KEY" SesEmailSource="$SES_EMAIL_SOURCE" FrontendUrl="$FRONTEND_URL"
+        - echo "Getting API Gateway URL..."
+        - API_URL=$(aws cloudformation describe-stacks --stack-name africa-tennis-backend --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" --output text)
+        - echo "Backend deployed! API Gateway URL: $API_URL"
+  artifacts:
+    baseDirectory: aws/.aws-sam/build
+    files:
+      - '**/*'
+test:
+  phases:
+    preTest:
+      commands:
+        - echo "Installing test dependencies..."
+        - npm ci
+    test:
+      commands:
+        - echo "Running TypeScript checks..."
+        - npx tsc --noEmit
+        - echo "Running linting..."
+        - npm run lint --if-present
+        - echo "Running unit tests..."
+        - npm test --if-present
+  artifacts:
+    baseDirectory: coverage
+    files:
+      - '**/*'
