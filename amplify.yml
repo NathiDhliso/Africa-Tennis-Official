@@ -23,20 +23,23 @@ frontend:
     paths:
       - node_modules/**/*
       - .npm/**/*
+      - /root/.cache/Cypress/**/*
 test:
   phases:
     preTest:
       commands:
         - echo "Installing test dependencies..."
         - npm ci --ignore-scripts
+        - echo "Installing Cypress binary..."
+        - npx cypress install
     test:
       commands:
         - echo "Running TypeScript checks..."
         - npx tsc --noEmit
         - echo "Running linting..."
         - npm run lint --if-present
-        - echo "Skipping Cypress tests due to configuration issues..."
-        - echo "Tests completed successfully"
+        - echo "Running tests..."
+        - npm test --if-present
   artifacts:
     baseDirectory: coverage
     files:

@@ -17,7 +17,7 @@
     "build:aws": "cross-env VITE_USE_AWS=true npm run build",
     "dev:aws:win": "set VITE_USE_AWS=true && npm run dev",
     "build:aws:win": "set VITE_USE_AWS=true && npm run build",
-    "test": "cypress open",
+    "test": "cypress run",
     "test:headless": "cypress run",
     "add-test-users": "tsx src/scripts/add-test-users.ts",
     "analyze": "vite build --mode analyze",
