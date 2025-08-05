@@ -38,7 +38,6 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'https://dd7v2jtghk.execute-api.us-west-2.amazonaws.com/prod',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
           configure: (proxy) => {
             proxy.on('error', (err) => {
               console.log('proxy error', err);
