@@ -190,12 +190,181 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     getDevices();
   }, [selectedCamera]);
 
+  // Simple edge detection function
+  const detectEdges = useCallback((imageData: ImageData): ImageData => {
+    const { data, width, height } = imageData;
+    const edges = new ImageData(width, height);
+    
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        
+        // Convert to grayscale
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        
+        // Simple Sobel edge detection
+        const gx = 
+          -1 * data[((y - 1) * width + (x - 1)) * 4] +
+           1 * data[((y - 1) * width + (x + 1)) * 4] +
+          -2 * data[(y * width + (x - 1)) * 4] +
+           2 * data[(y * width + (x + 1)) * 4] +
+          -1 * data[((y + 1) * width + (x - 1)) * 4] +
+           1 * data[((y + 1) * width + (x + 1)) * 4];
+           
+        const gy = 
+          -1 * data[((y - 1) * width + (x - 1)) * 4] +
+          -2 * data[((y - 1) * width + x) * 4] +
+          -1 * data[((y - 1) * width + (x + 1)) * 4] +
+           1 * data[((y + 1) * width + (x - 1)) * 4] +
+           2 * data[((y + 1) * width + x) * 4] +
+           1 * data[((y + 1) * width + (x + 1)) * 4];
+           
+        const magnitude = Math.sqrt(gx * gx + gy * gy);
+        const edgeValue = magnitude > 50 ? 255 : 0;
+        
+        edges.data[idx] = edgeValue;
+        edges.data[idx + 1] = edgeValue;
+        edges.data[idx + 2] = edgeValue;
+        edges.data[idx + 3] = 255;
+      }
+    }
+    
+    return edges;
+  }, []);
+
+  // Simple line detection using Hough transform concept
+  const detectLines = useCallback((edges: ImageData, width: number, height: number): number[][] => {
+    const lines: number[][] = [];
+    const threshold = 30;
+    
+    // Simplified line detection - look for horizontal and vertical edges
+    for (let y = 0; y < height; y += 10) {
+      let lineStart = -1;
+      let lineLength = 0;
+      
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        if (edges.data[idx] > 128) {
+          if (lineStart === -1) lineStart = x;
+          lineLength++;
+        } else {
+          if (lineLength > threshold && lineStart !== -1) {
+            lines.push([lineStart, y, lineStart + lineLength, y]);
+          }
+          lineStart = -1;
+          lineLength = 0;
+        }
+      }
+    }
+    
+    // Vertical lines
+    for (let x = 0; x < width; x += 10) {
+      let lineStart = -1;
+      let lineLength = 0;
+      
+      for (let y = 0; y < height; y++) {
+        const idx = (y * width + x) * 4;
+        if (edges.data[idx] > 128) {
+          if (lineStart === -1) lineStart = y;
+          lineLength++;
+        } else {
+          if (lineLength > threshold && lineStart !== -1) {
+            lines.push([x, lineStart, x, lineStart + lineLength]);
+          }
+          lineStart = -1;
+          lineLength = 0;
+        }
+      }
+    }
+    
+    return lines;
+  }, []);
+
+  // Check if a line is properly aligned with expected court geometry
+  const isLineProperlyAligned = useCallback((line: number[], expectedLine: number[], tolerance: number = 20): boolean => {
+    if (!line || !expectedLine || line.length < 4 || expectedLine.length < 4) return false;
+    
+    // Calculate distance between line endpoints and expected line endpoints
+    const startDistance = Math.sqrt(
+      Math.pow(line[0] - expectedLine[0], 2) + Math.pow(line[1] - expectedLine[1], 2)
+    );
+    const endDistance = Math.sqrt(
+      Math.pow(line[2] - expectedLine[2], 2) + Math.pow(line[3] - expectedLine[3], 2)
+    );
+    
+    // Check if both endpoints are within tolerance
+    return startDistance <= tolerance && endDistance <= tolerance;
+  }, []);
+
+  // Generate expected court lines based on standard court proportions
+  const getExpectedCourtLines = useCallback((width: number, height: number) => {
+    const courtWidth = width * 0.8;
+    const courtHeight = height * 0.7;
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
+    const courtLeft = centerX - courtWidth * 0.5;
+    const courtRight = centerX + courtWidth * 0.5;
+    const courtTop = centerY - courtHeight * 0.5;
+    const courtBottom = centerY + courtHeight * 0.5;
+    
+    return {
+      baselines: [
+        [courtLeft, courtTop, courtRight, courtTop], // Top baseline
+        [courtLeft, courtBottom, courtRight, courtBottom] // Bottom baseline
+      ],
+      serviceLines: [
+        [courtLeft, courtTop + courtHeight * 0.25, courtRight, courtTop + courtHeight * 0.25], // Top service line
+        [courtLeft, courtBottom - courtHeight * 0.25, courtRight, courtBottom - courtHeight * 0.25] // Bottom service line
+      ],
+      sidelines: [
+        [courtLeft, courtTop, courtLeft, courtBottom], // Left sideline
+        [courtRight, courtTop, courtRight, courtBottom] // Right sideline
+      ],
+      centerLine: [centerX, courtTop + courtHeight * 0.25, centerX, courtBottom - courtHeight * 0.25],
+      netLine: [courtLeft, centerY, courtRight, centerY]
+    };
+  }, []);
+
+  // Classify detected lines into court components with alignment checking
+  const classifyCourtLines = useCallback((lines: number[][], width: number, height: number) => {
+    const horizontalLines = lines.filter(line => Math.abs(line[1] - line[3]) < 10).sort((a, b) => a[1] - b[1]);
+    const verticalLines = lines.filter(line => Math.abs(line[0] - line[2]) < 10).sort((a, b) => a[0] - b[0]);
+    const expectedLines = getExpectedCourtLines(width, height);
+    
+    const classifiedLines = {
+      baselines: [horizontalLines[0], horizontalLines[horizontalLines.length - 1]].filter(Boolean),
+      serviceLines: horizontalLines.slice(1, -1),
+      sidelines: [verticalLines[0], verticalLines[verticalLines.length - 1]].filter(Boolean),
+      centerLine: verticalLines[Math.floor(verticalLines.length / 2)],
+      netLine: horizontalLines[Math.floor(horizontalLines.length / 2)]
+    };
+    
+    // Add alignment status to each line type
+    return {
+      ...classifiedLines,
+      alignment: {
+        baselines: classifiedLines.baselines.map((line, index) => 
+          isLineProperlyAligned(line, expectedLines.baselines[index])
+        ),
+        serviceLines: classifiedLines.serviceLines.map((line, index) => 
+          isLineProperlyAligned(line, expectedLines.serviceLines[index])
+        ),
+        sidelines: classifiedLines.sidelines.map((line, index) => 
+          isLineProperlyAligned(line, expectedLines.sidelines[index])
+        ),
+        centerLine: isLineProperlyAligned(classifiedLines.centerLine, expectedLines.centerLine),
+        netLine: isLineProperlyAligned(classifiedLines.netLine, expectedLines.netLine)
+      }
+    };
+  }, [getExpectedCourtLines, isLineProperlyAligned]);
+
   // Initialize backend service
   useEffect(() => {
     const initializeBackendService = async () => {
       try {
+        await videoProcessingService.initialize();
         console.log('Backend video processing service initialized');
-        // Backend processing will be handled during video upload
       } catch (err) {
         console.error('Error initializing backend service:', err);
         setError('Failed to initialize video processing service');
@@ -472,175 +641,6 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
       console.error('Error in live court detection:', error);
     }
   }, [classifyCourtLines, detectEdges, detectLines]);
-
-  // Simple edge detection function
-  const detectEdges = useCallback((imageData: ImageData): ImageData => {
-    const { data, width, height } = imageData;
-    const edges = new ImageData(width, height);
-    
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const idx = (y * width + x) * 4;
-        
-        // Convert to grayscale
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-        
-        // Simple Sobel edge detection
-        const gx = 
-          -1 * data[((y - 1) * width + (x - 1)) * 4] +
-           1 * data[((y - 1) * width + (x + 1)) * 4] +
-          -2 * data[(y * width + (x - 1)) * 4] +
-           2 * data[(y * width + (x + 1)) * 4] +
-          -1 * data[((y + 1) * width + (x - 1)) * 4] +
-           1 * data[((y + 1) * width + (x + 1)) * 4];
-           
-        const gy = 
-          -1 * data[((y - 1) * width + (x - 1)) * 4] +
-          -2 * data[((y - 1) * width + x) * 4] +
-          -1 * data[((y - 1) * width + (x + 1)) * 4] +
-           1 * data[((y + 1) * width + (x - 1)) * 4] +
-           2 * data[((y + 1) * width + x) * 4] +
-           1 * data[((y + 1) * width + (x + 1)) * 4];
-           
-        const magnitude = Math.sqrt(gx * gx + gy * gy);
-        const edgeValue = magnitude > 50 ? 255 : 0;
-        
-        edges.data[idx] = edgeValue;
-        edges.data[idx + 1] = edgeValue;
-        edges.data[idx + 2] = edgeValue;
-        edges.data[idx + 3] = 255;
-      }
-    }
-    
-    return edges;
-  }, []);
-
-  // Simple line detection using Hough transform concept
-  const detectLines = useCallback((edges: ImageData, width: number, height: number): number[][] => {
-    const lines: number[][] = [];
-    const threshold = 30;
-    
-    // Simplified line detection - look for horizontal and vertical edges
-    for (let y = 0; y < height; y += 10) {
-      let lineStart = -1;
-      let lineLength = 0;
-      
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 4;
-        if (edges.data[idx] > 128) {
-          if (lineStart === -1) lineStart = x;
-          lineLength++;
-        } else {
-          if (lineLength > threshold && lineStart !== -1) {
-            lines.push([lineStart, y, lineStart + lineLength, y]);
-          }
-          lineStart = -1;
-          lineLength = 0;
-        }
-      }
-    }
-    
-    // Vertical lines
-    for (let x = 0; x < width; x += 10) {
-      let lineStart = -1;
-      let lineLength = 0;
-      
-      for (let y = 0; y < height; y++) {
-        const idx = (y * width + x) * 4;
-        if (edges.data[idx] > 128) {
-          if (lineStart === -1) lineStart = y;
-          lineLength++;
-        } else {
-          if (lineLength > threshold && lineStart !== -1) {
-            lines.push([x, lineStart, x, lineStart + lineLength]);
-          }
-          lineStart = -1;
-          lineLength = 0;
-        }
-      }
-    }
-    
-    return lines;
-  }, []);
-
-  // Check if a line is properly aligned with expected court geometry
-  const isLineProperlyAligned = useCallback((line: number[], expectedLine: number[], tolerance: number = 20): boolean => {
-    if (!line || !expectedLine || line.length < 4 || expectedLine.length < 4) return false;
-    
-    // Calculate distance between line endpoints and expected line endpoints
-    const startDistance = Math.sqrt(
-      Math.pow(line[0] - expectedLine[0], 2) + Math.pow(line[1] - expectedLine[1], 2)
-    );
-    const endDistance = Math.sqrt(
-      Math.pow(line[2] - expectedLine[2], 2) + Math.pow(line[3] - expectedLine[3], 2)
-    );
-    
-    // Check if both endpoints are within tolerance
-    return startDistance <= tolerance && endDistance <= tolerance;
-  }, []);
-
-  // Calculate expected court line positions based on standard tennis court proportions
-  const getExpectedCourtLines = useCallback((width: number, height: number) => {
-    const courtWidth = width * 0.8;
-    const courtHeight = height * 0.7;
-    const centerX = width * 0.5;
-    const centerY = height * 0.5;
-    const courtLeft = centerX - courtWidth * 0.5;
-    const courtRight = centerX + courtWidth * 0.5;
-    const courtTop = centerY - courtHeight * 0.5;
-    const courtBottom = centerY + courtHeight * 0.5;
-    
-    return {
-      baselines: [
-        [courtLeft, courtTop, courtRight, courtTop], // Top baseline
-        [courtLeft, courtBottom, courtRight, courtBottom] // Bottom baseline
-      ],
-      serviceLines: [
-        [courtLeft, courtTop + courtHeight * 0.25, courtRight, courtTop + courtHeight * 0.25], // Top service line
-        [courtLeft, courtBottom - courtHeight * 0.25, courtRight, courtBottom - courtHeight * 0.25] // Bottom service line
-      ],
-      sidelines: [
-        [courtLeft, courtTop, courtLeft, courtBottom], // Left sideline
-        [courtRight, courtTop, courtRight, courtBottom] // Right sideline
-      ],
-      centerLine: [centerX, courtTop + courtHeight * 0.25, centerX, courtBottom - courtHeight * 0.25],
-      netLine: [courtLeft, centerY, courtRight, centerY]
-    };
-  }, []);
-
-  // Classify detected lines into court components with alignment checking
-  const classifyCourtLines = useCallback((lines: number[][], width: number, height: number) => {
-    const horizontalLines = lines.filter(line => Math.abs(line[1] - line[3]) < 10).sort((a, b) => a[1] - b[1]);
-    const verticalLines = lines.filter(line => Math.abs(line[0] - line[2]) < 10).sort((a, b) => a[0] - b[0]);
-    const expectedLines = getExpectedCourtLines(width, height);
-    
-    const classifiedLines = {
-      baselines: [horizontalLines[0], horizontalLines[horizontalLines.length - 1]].filter(Boolean),
-      serviceLines: horizontalLines.slice(1, -1),
-      sidelines: [verticalLines[0], verticalLines[verticalLines.length - 1]].filter(Boolean),
-      centerLine: verticalLines[Math.floor(verticalLines.length / 2)],
-      netLine: horizontalLines[Math.floor(horizontalLines.length / 2)]
-    };
-    
-    // Add alignment status to each line type
-    return {
-      ...classifiedLines,
-      alignment: {
-        baselines: classifiedLines.baselines.map((line, index) => 
-          isLineProperlyAligned(line, expectedLines.baselines[index])
-        ),
-        serviceLines: classifiedLines.serviceLines.map((line, index) => 
-          isLineProperlyAligned(line, expectedLines.serviceLines[index])
-        ),
-        sidelines: classifiedLines.sidelines.map((line, index) => 
-          isLineProperlyAligned(line, expectedLines.sidelines[index])
-        ),
-        centerLine: isLineProperlyAligned(classifiedLines.centerLine, expectedLines.centerLine),
-        netLine: isLineProperlyAligned(classifiedLines.netLine, expectedLines.netLine)
-      }
-    };
-  }, [getExpectedCourtLines, isLineProperlyAligned]);
 
   // Basic tracking for visual feedback (no AI processing)
   const startTracking = useCallback(() => {

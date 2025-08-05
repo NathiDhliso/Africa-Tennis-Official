@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useEffect, ReactNode } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase-generated';

@@ -37,61 +37,41 @@ try {
 
 // Enhanced page loading fallback with skeleton
 const PageLoadingFallback = () => {
-  console.log('[PAGE_LOADING_FALLBACK] Component called');
-  console.log('[PAGE_LOADING_FALLBACK] React available:', typeof React);
-  console.log('[PAGE_LOADING_FALLBACK] LoadingSpinner available:', typeof LoadingSpinner);
-  
-  try {
-    console.log('[PAGE_LOADING_FALLBACK] About to render JSX');
-    return (
-      <div className="page-transition-container">
-        <div className="page-skeleton">
-          <div className="skeleton-header">
-            <div className="skeleton-title"></div>
-            <div className="skeleton-subtitle"></div>
-          </div>
-          <div className="skeleton-content">
-            <div className="skeleton-card"></div>
-            <div className="skeleton-card"></div>
-            <div className="skeleton-card"></div>
-          </div>
+  return (
+    <div className="page-transition-container">
+      <div className="page-skeleton">
+        <div className="skeleton-header">
+          <div className="skeleton-title"></div>
+          <div className="skeleton-subtitle"></div>
         </div>
-        <div className="loading-overlay">
-          {console.log('[PAGE_LOADING_FALLBACK] About to render LoadingSpinner')}
-          <LoadingSpinner size="large" text="Loading page..." />
+        <div className="skeleton-content">
+          <div className="skeleton-card"></div>
+          <div className="skeleton-card"></div>
+          <div className="skeleton-card"></div>
         </div>
       </div>
-    );
-  } catch (error) {
-    console.error('[PAGE_LOADING_FALLBACK] Error in component:', error);
-    console.error('[PAGE_LOADING_FALLBACK] Error stack:', error instanceof Error ? error.stack : 'No stack');
-    throw error;
-  }
+      <div className="loading-overlay">
+        <LoadingSpinner size="large" text="Loading page..." />
+      </div>
+    </div>
+  );
 };
 
 function App() {
-  console.log('[APP] App component rendering');
-  
   const { initialize, loading, user } = useAuthStore();
-  console.log('[APP] Auth state:', { loading, hasUser: !!user, userId: user?.id });
   
   // Monitor page load performance
   try {
     usePerformanceMonitor();
-    console.log('[APP] Performance monitor initialized');
   } catch (error) {
     console.error('[APP] Performance monitor failed:', error);
   }
 
   useEffect(() => {
-    console.log('[APP] useEffect - initializing auth state');
-    
     // Initialize auth state
     const initializeAuth = async () => {
       try {
-        console.log('[APP] Calling auth initialize');
         const cleanup = await initialize();
-        console.log('[APP] Auth initialize completed');
         return cleanup;
       } catch (error) {
         console.error('[APP] Auth initialize failed:', error);
@@ -102,37 +82,33 @@ function App() {
     
     // Enhanced preloading strategy
     const preloadPages = () => {
-      console.log('[APP] Starting page preloading for user:', !!user);
-      
       if (user) {
-        console.log('[APP] Preloading authenticated user pages');
         // Preload most commonly accessed pages first
-        import('./pages/DashboardPage').then(() => console.log('[APP] DashboardPage preloaded'));
-        import('./pages/MatchesPage').then(() => console.log('[APP] MatchesPage preloaded'));
+        import('./pages/DashboardPage');
+        import('./pages/MatchesPage');
         
         // Preload secondary pages after a short delay
         setTimeout(() => {
-          import('./pages/ProfilePage').then(() => console.log('[APP] ProfilePage preloaded'));
-          import('./pages/RankingsPage').then(() => console.log('[APP] RankingsPage preloaded'));
-          import('./pages/TournamentsPage').then(() => console.log('[APP] TournamentsPage preloaded'));
+          import('./pages/ProfilePage');
+          import('./pages/RankingsPage');
+          import('./pages/TournamentsPage');
         }, 1000);
         
         // Preload heavy components last
         setTimeout(() => {
-          import('./pages/VideoAnalysisPage').then(() => console.log('[APP] VideoAnalysisPage preloaded'));
-          import('./pages/AICoachPage').then(() => console.log('[APP] AICoachPage preloaded'));
-          import('./pages/AIIntegrationPage').then(() => console.log('[APP] AIIntegrationPage preloaded'));
-          import('./pages/UmpirePage').then(() => console.log('[APP] UmpirePage preloaded'));
+          import('./pages/VideoAnalysisPage');
+          import('./pages/AICoachPage');
+          import('./pages/AIIntegrationPage');
+          import('./pages/UmpirePage');
         }, 3000);
       } else {
-        console.log('[APP] Preloading guest pages');
-        import('./pages/LoginPage').then(() => console.log('[APP] LoginPage preloaded'));
-        import('./pages/SignUpPage').then(() => console.log('[APP] SignUpPage preloaded'));
+        import('./pages/LoginPage');
+        import('./pages/SignUpPage');
         
         // Preload password reset pages
         setTimeout(() => {
-          import('./pages/ForgotPasswordPage').then(() => console.log('[APP] ForgotPasswordPage preloaded'));
-          import('./pages/ResetPasswordPage').then(() => console.log('[APP] ResetPasswordPage preloaded'));
+          import('./pages/ForgotPasswordPage');
+          import('./pages/ResetPasswordPage');
         }, 1000);
       }
     };
@@ -143,13 +119,8 @@ function App() {
   }, [initialize, user]);
 
   if (loading) {
-    console.log('[APP] Rendering loading state');
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
   }
-
-  console.log('[APP] Rendering main app with user:', !!user);
-
-  console.log('[APP] About to render App component, loading:', loading, 'user:', !!user);
   
   try {
     return (

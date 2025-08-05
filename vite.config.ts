@@ -28,8 +28,7 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       global: 'globalThis',
-      module: {}, // Shim for long.js UMD build used by TensorFlow
-      require: 'undefined', // Prevent require usage in browser
+      // Do not add module or require shims here - they cause vendor bundle issues
     },
     server: {
       host: true,
