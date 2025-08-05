@@ -27,67 +27,101 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 // Initialize Sentry
-initSentry();
+console.log('[APP] Initializing Sentry');
+try {
+  initSentry();
+  console.log('[APP] Sentry initialized successfully');
+} catch (error) {
+  console.error('[APP] Sentry initialization failed:', error);
+}
 
 // Enhanced page loading fallback with skeleton
-const PageLoadingFallback = () => (
-  <div className="page-transition-container">
-    <div className="page-skeleton">
-      <div className="skeleton-header">
-        <div className="skeleton-title"></div>
-        <div className="skeleton-subtitle"></div>
+const PageLoadingFallback = () => {
+  console.log('[APP] Rendering PageLoadingFallback');
+  return (
+    <div className="page-transition-container">
+      <div className="page-skeleton">
+        <div className="skeleton-header">
+          <div className="skeleton-title"></div>
+          <div className="skeleton-subtitle"></div>
+        </div>
+        <div className="skeleton-content">
+          <div className="skeleton-card"></div>
+          <div className="skeleton-card"></div>
+          <div className="skeleton-card"></div>
+        </div>
       </div>
-      <div className="skeleton-content">
-        <div className="skeleton-card"></div>
-        <div className="skeleton-card"></div>
-        <div className="skeleton-card"></div>
+      <div className="loading-overlay">
+        <LoadingSpinner size="large" text="Loading page..." />
       </div>
     </div>
-    <div className="loading-overlay">
-      <LoadingSpinner size="large" text="Loading page..." />
-    </div>
-  </div>
-);
+  );
+};
 
 function App() {
+  console.log('[APP] App component rendering');
+  
   const { initialize, loading, user } = useAuthStore();
+  console.log('[APP] Auth state:', { loading, hasUser: !!user, userId: user?.id });
   
   // Monitor page load performance
-  usePerformanceMonitor();
+  try {
+    usePerformanceMonitor();
+    console.log('[APP] Performance monitor initialized');
+  } catch (error) {
+    console.error('[APP] Performance monitor failed:', error);
+  }
 
   useEffect(() => {
+    console.log('[APP] useEffect - initializing auth state');
+    
     // Initialize auth state
-    initialize();
+    const initializeAuth = async () => {
+      try {
+        console.log('[APP] Calling auth initialize');
+        const cleanup = await initialize();
+        console.log('[APP] Auth initialize completed');
+        return cleanup;
+      } catch (error) {
+        console.error('[APP] Auth initialize failed:', error);
+      }
+    };
+    
+    initializeAuth();
     
     // Enhanced preloading strategy
     const preloadPages = () => {
+      console.log('[APP] Starting page preloading for user:', !!user);
+      
       if (user) {
+        console.log('[APP] Preloading authenticated user pages');
         // Preload most commonly accessed pages first
-        import('./pages/DashboardPage');
-        import('./pages/MatchesPage');
+        import('./pages/DashboardPage').then(() => console.log('[APP] DashboardPage preloaded'));
+        import('./pages/MatchesPage').then(() => console.log('[APP] MatchesPage preloaded'));
         
         // Preload secondary pages after a short delay
         setTimeout(() => {
-          import('./pages/ProfilePage');
-          import('./pages/RankingsPage');
-          import('./pages/TournamentsPage');
+          import('./pages/ProfilePage').then(() => console.log('[APP] ProfilePage preloaded'));
+          import('./pages/RankingsPage').then(() => console.log('[APP] RankingsPage preloaded'));
+          import('./pages/TournamentsPage').then(() => console.log('[APP] TournamentsPage preloaded'));
         }, 1000);
         
         // Preload heavy components last
         setTimeout(() => {
-          import('./pages/VideoAnalysisPage');
-          import('./pages/AICoachPage');
-          import('./pages/AIIntegrationPage');
-          import('./pages/UmpirePage');
+          import('./pages/VideoAnalysisPage').then(() => console.log('[APP] VideoAnalysisPage preloaded'));
+          import('./pages/AICoachPage').then(() => console.log('[APP] AICoachPage preloaded'));
+          import('./pages/AIIntegrationPage').then(() => console.log('[APP] AIIntegrationPage preloaded'));
+          import('./pages/UmpirePage').then(() => console.log('[APP] UmpirePage preloaded'));
         }, 3000);
       } else {
-        import('./pages/LoginPage');
-        import('./pages/SignUpPage');
+        console.log('[APP] Preloading guest pages');
+        import('./pages/LoginPage').then(() => console.log('[APP] LoginPage preloaded'));
+        import('./pages/SignUpPage').then(() => console.log('[APP] SignUpPage preloaded'));
         
         // Preload password reset pages
         setTimeout(() => {
-          import('./pages/ForgotPasswordPage');
-          import('./pages/ResetPasswordPage');
+          import('./pages/ForgotPasswordPage').then(() => console.log('[APP] ForgotPasswordPage preloaded'));
+          import('./pages/ResetPasswordPage').then(() => console.log('[APP] ResetPasswordPage preloaded'));
         }, 1000);
       }
     };
@@ -98,8 +132,11 @@ function App() {
   }, [initialize, user]);
 
   if (loading) {
+    console.log('[APP] Rendering loading state');
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
   }
+
+  console.log('[APP] Rendering main app with user:', !!user);
 
   try {
     return (
@@ -107,6 +144,7 @@ function App() {
         <ThemeProvider>
           {user ? (
             <div className="app-layout">
+              {console.log('[APP] Rendering authenticated layout')}
               <Sidebar />
               <main className="app-main">
                 <PageWrapper enableStagger={true}>
@@ -133,6 +171,7 @@ function App() {
             </div>
           ) : (
             <div className="min-h-screen">
+              {console.log('[APP] Rendering guest layout')}
               <PageWrapper enableStagger={true}>
                 <Suspense fallback={<PageLoadingFallback />}>
                   <Routes>
@@ -150,7 +189,8 @@ function App() {
       </AuthProvider>
     );
   } catch (error: unknown) {
-    console.error('Error in App component:', error);
+    console.error('[APP] Error in App component:', error);
+    console.error('[APP] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return <div className="min-h-screen flex items-center justify-center"><LoadingSpinner /></div>;
   }
 }

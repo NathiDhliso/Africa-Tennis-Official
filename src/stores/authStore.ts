@@ -34,23 +34,32 @@ export const useAuthStore = create<AuthState>()(
       loading: true,
 
       initialize: async () => {
+        console.log('[AUTH STORE] Starting initialization');
         try {
+          console.log('[AUTH STORE] Getting current session');
           const { data: { session } } = await supabase.auth.getSession();
+          console.log('[AUTH STORE] Session retrieved:', !!session);
           
           if (session) {
+            console.log('[AUTH STORE] Session found, setting user state');
             set({ 
               user: session.user, 
               session,
               loading: false 
             });
+            console.log('[AUTH STORE] Fetching user profile');
             await get().fetchProfile();
           } else {
+            console.log('[AUTH STORE] No session found, setting loading to false');
             set({ loading: false });
           }
 
+          console.log('[AUTH STORE] Setting up auth state change listener');
           // Listen for auth changes
           const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[AUTH STORE] Auth state change:', event, !!session);
             if (event === 'SIGNED_IN' && session) {
+              console.log('[AUTH STORE] User signed in, updating state');
               set({ 
                 user: session.user, 
                 session,
@@ -58,6 +67,7 @@ export const useAuthStore = create<AuthState>()(
               });
               await get().fetchProfile();
             } else if (event === 'SIGNED_OUT') {
+              console.log('[AUTH STORE] User signed out, clearing state');
               set({ 
                 user: null, 
                 profile: null, 
@@ -70,10 +80,15 @@ export const useAuthStore = create<AuthState>()(
             }
           });
 
+          console.log('[AUTH STORE] Initialization completed successfully');
           // Optionally provide an unsubscribe function for callers that wish to clean up
-          return () => subscription.unsubscribe();
+          return () => {
+            console.log('[AUTH STORE] Cleaning up auth subscription');
+            subscription.unsubscribe();
+          };
         } catch (error) {
-          console.error('Auth initialization error:', error);
+          console.error('[AUTH STORE] Auth initialization error:', error);
+          console.error('[AUTH STORE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
           set({ loading: false });
         }
       },
@@ -174,30 +189,44 @@ export const useAuthStore = create<AuthState>()(
       },
 
       fetchProfile: async () => {
+        console.log('[AUTH STORE] fetchProfile called');
         const { user, profile } = get();
-        if (!user) return;
+        if (!user) {
+          console.log('[AUTH STORE] No user found, skipping profile fetch');
+          return;
+        }
 
+        console.log('[AUTH STORE] Checking profile cache for user:', user.id);
         // Return cached profile if it's fresh
         const now = Date.now();
         if (profile && (now - lastProfileFetch) < PROFILE_CACHE_TIME) {
+          console.log('[AUTH STORE] Using cached profile');
           return;
         }
 
         // Return existing promise if a fetch is already in progress
         if (profileFetchPromise) {
+          console.log('[AUTH STORE] Profile fetch already in progress, returning existing promise');
           return profileFetchPromise;
         }
 
+        console.log('[AUTH STORE] Starting new profile fetch');
         // Create new fetch promise
         profileFetchPromise = (async () => {
           try {
+            console.log('[AUTH STORE] Querying profiles table for user:', user.id);
             const { data, error } = await supabase
               .from('profiles')
               .select('user_id, username, elo_rating, matches_played, matches_won, skill_level, bio, profile_picture_url, created_at, updated_at, player_style_analysis')
               .eq('user_id', user.id)
               .single();
 
-            if (error) throw error;
+            if (error) {
+              console.error('[AUTH STORE] Profile fetch error:', error);
+              throw error;
+            }
+
+            console.log('[AUTH STORE] Profile fetched successfully:', !!data);
             
             set({ profile: data as Profile });
             lastProfileFetch = Date.now();
