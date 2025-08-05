@@ -39,7 +39,7 @@ test:
         - echo "Running linting..."
         - npm run lint --if-present
         - echo "Running tests..."
-        - npm test --if-present
+        - npm run test:ci --if-present
   artifacts:
     baseDirectory: coverage
     files:
