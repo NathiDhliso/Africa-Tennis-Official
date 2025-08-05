@@ -13,6 +13,8 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   subtext,
   color
 }) => {
+  console.log('[LOADING_SPINNER] Rendering with props:', { size, text, subtext, color });
+  console.log('[LOADING_SPINNER] React available:', typeof React);
   const spinnerSizes = {
     small: 'w-6 h-6',
     medium: 'w-10 h-10',

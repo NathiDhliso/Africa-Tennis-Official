@@ -37,25 +37,36 @@ try {
 
 // Enhanced page loading fallback with skeleton
 const PageLoadingFallback = () => {
-  console.log('[APP] Rendering PageLoadingFallback');
-  return (
-    <div className="page-transition-container">
-      <div className="page-skeleton">
-        <div className="skeleton-header">
-          <div className="skeleton-title"></div>
-          <div className="skeleton-subtitle"></div>
+  console.log('[PAGE_LOADING_FALLBACK] Component called');
+  console.log('[PAGE_LOADING_FALLBACK] React available:', typeof React);
+  console.log('[PAGE_LOADING_FALLBACK] LoadingSpinner available:', typeof LoadingSpinner);
+  
+  try {
+    console.log('[PAGE_LOADING_FALLBACK] About to render JSX');
+    return (
+      <div className="page-transition-container">
+        <div className="page-skeleton">
+          <div className="skeleton-header">
+            <div className="skeleton-title"></div>
+            <div className="skeleton-subtitle"></div>
+          </div>
+          <div className="skeleton-content">
+            <div className="skeleton-card"></div>
+            <div className="skeleton-card"></div>
+            <div className="skeleton-card"></div>
+          </div>
         </div>
-        <div className="skeleton-content">
-          <div className="skeleton-card"></div>
-          <div className="skeleton-card"></div>
-          <div className="skeleton-card"></div>
+        <div className="loading-overlay">
+          {console.log('[PAGE_LOADING_FALLBACK] About to render LoadingSpinner')}
+          <LoadingSpinner size="large" text="Loading page..." />
         </div>
       </div>
-      <div className="loading-overlay">
-        <LoadingSpinner size="large" text="Loading page..." />
-      </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error('[PAGE_LOADING_FALLBACK] Error in component:', error);
+    console.error('[PAGE_LOADING_FALLBACK] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    throw error;
+  }
 };
 
 function App() {
@@ -138,6 +149,8 @@ function App() {
 
   console.log('[APP] Rendering main app with user:', !!user);
 
+  console.log('[APP] About to render App component, loading:', loading, 'user:', !!user);
+  
   try {
     return (
       <AuthProvider>
@@ -148,7 +161,14 @@ function App() {
               <Sidebar />
               <main className="app-main">
                 <PageWrapper enableStagger={true}>
-                  <Suspense fallback={<PageLoadingFallback />}>
+                  {console.log('[APP] About to render Suspense for authenticated routes')}
+                  <Suspense fallback={
+                    <>
+                      {console.log('[APP] Suspense fallback triggered for authenticated routes')}
+                      <PageLoadingFallback />
+                    </>
+                  }>
+                    {console.log('[APP] Rendering authenticated Routes')}
                     <Routes>
                       <Route path="/dashboard" element={<DashboardPage />} />
                       <Route path="/matches" element={<MatchesPage />} />
@@ -173,7 +193,14 @@ function App() {
             <div className="min-h-screen">
               {console.log('[APP] Rendering guest layout')}
               <PageWrapper enableStagger={true}>
-                <Suspense fallback={<PageLoadingFallback />}>
+                {console.log('[APP] About to render Suspense for guest routes')}
+                <Suspense fallback={
+                  <>
+                    {console.log('[APP] Suspense fallback triggered for guest routes')}
+                    <PageLoadingFallback />
+                  </>
+                }>
+                  {console.log('[APP] Rendering guest Routes')}
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignUpPage />} />
