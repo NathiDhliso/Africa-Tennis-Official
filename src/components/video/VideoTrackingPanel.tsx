@@ -372,7 +372,7 @@ const VideoTrackingPanel: React.FC<VideoTrackingPanelProps> = memo(({
     };
     
     initializeBackendService();
-  }, [classifyCourtLines, detectEdges, detectLines]);
+  }, []);
 
   // Format recording time
   const formatRecordingTime = (seconds: number) => {
