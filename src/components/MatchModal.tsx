@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, MapPin, Users, Clock, Target, Search, User } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
 import { User as UserType } from '../types';
 
@@ -19,7 +19,7 @@ const MatchModal: React.FC<MatchModalProps> = ({
   preselectedPlayer,
   mode = 'create'
 }) => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [availablePlayers, setAvailablePlayers] = useState<UserType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPlayers, setFilteredPlayers] = useState<UserType[]>([]);
