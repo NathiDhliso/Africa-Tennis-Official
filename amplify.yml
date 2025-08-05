@@ -2,7 +2,7 @@ version: 1
 frontend:
   environment:
     variables:
-      NODE_VERSION: '18'
+      NODE_VERSION: '22'
   phases:
     preBuild:
       commands:
