@@ -9,8 +9,8 @@ region = "us-west-2"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = [
-    "SupabaseUrl=https://your-project.supabase.co",
-    "SupabaseServiceRoleKey=your-service-role-key",
+    "SupabaseUrl=https://ppuqbimzeplznqdchvve.supabase.co",
+    "SupabaseServiceRoleKey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwdXFiaW16ZXBsem5xZGNodnZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTYzNzI2MSwiZXhwIjoyMDY1MjEzMjYxfQ.NEfWLgVkb98xlApZ1T6ZeDkh5stIH1rnfs_-bJwYx0U",
     "SesEmailSource=info@africatennis.com",
     "FrontendUrl=www.africatennis.com"
 ]
