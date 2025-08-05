@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from 'react-error-boundary'
 import LoadingSpinner from './components/LoadingSpinner'
+import { ErrorFallback } from './components/ErrorFallback'
 import { queryClient } from './lib/queryClient'
 import './index.css'
 
@@ -30,23 +31,7 @@ import './styles/components/tournament-form.css'
 // Lazy load App component for better initial load performance
 const App = lazy(() => import('./App'))
 
-// Error fallback component
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-bg-deep-space">
-      <div className="bg-glass-bg backdrop-filter-blur border border-glass-border rounded-lg p-6 max-w-md w-full">
-        <h2 className="text-xl font-bold mb-4 text-error-pink">Something went wrong</h2>
-        <p className="mb-4 text-text-standard">{error.message}</p>
-        <button
-          onClick={resetErrorBoundary}
-          className="btn btn-primary w-full"
-        >
-          Try again
-        </button>
-      </div>
-    </div>
-  );
-}
+
 
 createRoot(document.getElementById('root')!).render(
   // Disable StrictMode to avoid double-mount and duplicate realtime subscriptions in dev

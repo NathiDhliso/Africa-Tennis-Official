@@ -18,15 +18,7 @@ interface AuthContextValue {
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<AuthContextProps> = ({ children }) => {
   const { user, profile, loading, signIn, signOut, updateProfile, initialize } = useAuthStore();

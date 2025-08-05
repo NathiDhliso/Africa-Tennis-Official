@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Trophy, ArrowRight } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 const OnboardingPage: React.FC = () => {
   const [name, setName] = useState('');

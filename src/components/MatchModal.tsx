@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, MapPin, Users, Clock, Target, Search, User } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { User as UserType } from '../types';
 
