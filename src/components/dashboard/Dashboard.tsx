@@ -1,60 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Target, Zap } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useMatches } from '../../hooks/useMatches';
 import { useTournaments } from '../../hooks/useTournaments';
 import CreateMatchModal from '../matches/CreateMatchModal';
 import LoadingSpinner from '../LoadingSpinner';
-import { Match, Tournament } from '../../types';
+
 
 export const Dashboard: React.FC = () => {
   const { user, profile } = useAuthStore();
-  const { data: rawMatches, isLoading: isLoadingMatches } = useMatches(user?.id);
-  const { tournaments: rawTournaments, isLoading: isLoadingTournaments } = useTournaments();
+  const { isLoading: isLoadingMatches } = useMatches(user?.id);
+  const { isLoading: isLoadingTournaments } = useTournaments();
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const processedMatches: Match[] = useMemo(() => {
-    if (!rawMatches) return [];
-    return rawMatches.map((m: Match) => ({
-      ...m,
-      challengerId: m.player1_id,
-      challengedId: m.player2_id,
-      createdAt: m.created_at,
-      challengerScore: m.challengerScore,
-      challengedScore: m.challengedScore,
-      winner: m.winner_id,
-      detailedStatsId: m.detailedStatsId,
-      scoreDisplay: m.scoreDisplay,
-      tournamentId: m.tournament_id
-    }));
-  }, [rawMatches]);
 
-  const processedTournaments: Tournament[] = useMemo(() => {
-    if (!rawTournaments) return [];
-    return rawTournaments.map((t: Tournament) => ({
-      id: t.id,
-      name: t.name,
-      description: t.description,
-      location: t.location,
-      format: t.format,
-      status: t.status,
-      created_at: t.created_at,
-      start_date: t.start_date,
-      end_date: t.end_date,
-      organizer_id: t.organizer_id,
-      registration_deadline: t.registration_deadline,
-      max_participants: t.max_participants,
-      min_participants: t.min_participants,
-      entry_fee: t.entry_fee,
-      prize_pool: t.prize_pool,
-      brackets_generated: t.brackets_generated,
-      updated_at: t.updated_at,
-      participant_count: t.participant_count,
-      is_registered: t.is_registered,
-      umpire_id: t.umpire_id,
-      winner_id: t.winner_id,
-    }));
-  }, [rawTournaments]);
 
   const handleCreateMatch = () => {
     setShowCreateForm(true);

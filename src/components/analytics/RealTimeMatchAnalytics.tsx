@@ -7,7 +7,6 @@ import {
   Activity,
   Award,
   Eye,
-  Brain,
   Gauge,
   Timer
 } from 'lucide-react';
@@ -171,7 +170,6 @@ const RealTimeMatchAnalytics: React.FC<RealTimeMatchAnalyticsProps> = ({
   }>>([]);
   
   const startTimeRef = useRef<number>(Date.now());
-  const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Update match duration
   const updateMatchDuration = useCallback(() => {

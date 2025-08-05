@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Calendar, MapPin, Trophy, Users, Clock, Target, ChevronRight, CheckCircle, Play, Award, AlertTriangle, Info } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Trophy, Users, Clock, Target, ChevronRight, CheckCircle, Play, Award, AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
 import { useAuthStore } from '../../stores/authStore'
@@ -37,15 +37,15 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
   const [tournament, setTournament] = useState<Tournament | null>(null)
   const [participants, setParticipants] = useState<TournamentParticipant[]>([])
   const [matches, setMatches] = useState<Match[]>([])
-  const [organizer, setOrganizer] = useState<any>(null)
+  const [organizer, setOrganizer] = useState<{ username: string; elo_rating: number | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [isRegistered, setIsRegistered] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'matches'>('overview')
   const [isRegistering, setIsRegistering] = useState(false)
   const [isUnregistering, setIsUnregistering] = useState(false)
-  const [isGeneratingBracket, setIsGeneratingBracket] = useState(false)
-  const [bracketGenerationSuccess, setBracketGenerationSuccess] = useState(false)
   const [isClosingRegistration, setIsClosingRegistration] = useState(false)
+  const [bracketGenerationSuccess, setBracketGenerationSuccess] = useState(false)
+  const [isGeneratingBracket, setIsGeneratingBracket] = useState(false)
   const [error, setError] = useState<ErrorState>({
     visible: false,
     title: '',
@@ -172,20 +172,20 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
         
         setMatches(matches)
         clearTimeout(timeoutId) // Clear timeout on success
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId) // Clear timeout on error
         console.error('Error fetching tournament details:', error)
         setError({
           visible: true,
           title: 'Error Loading Tournament',
           message: 'We couldn\'t load the tournament details.',
-          details: error.message,
+          details: error instanceof Error ? error.message : 'Unknown error',
           type: 'error'
         })
       } finally {
         setLoading(false)
       }
-    }, [tournamentId])
+    }, [tournamentId, user])
 
   useEffect(() => {
     console.log('=== TOURNAMENT DETAILS USEEFFECT RUNNING ===');
@@ -195,7 +195,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
     // Set up real-time subscription for tournament updates
     const tournamentSubscription = supabase
       .channel(`tournament-${tournamentId}`)
-      .on('postgres_changes' as any, 
+      .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tournaments', filter: `id=eq.${tournamentId}` },
         fetchTournamentDetails
       )
@@ -204,7 +204,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
     // Set up real-time subscription for participants updates
     const participantsSubscription = supabase
       .channel(`tournament-participants-${tournamentId}`)
-      .on('postgres_changes' as any, 
+      .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tournament_participants', filter: `tournament_id=eq.${tournamentId}` },
         fetchTournamentDetails
       )
@@ -213,7 +213,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
     // Set up real-time subscription for matches updates
     const matchesSubscription = supabase
       .channel(`tournament-matches-${tournamentId}`)
-      .on('postgres_changes' as any, 
+      .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'matches', filter: `tournament_id=eq.${tournamentId}` },
         fetchTournamentDetails
       )
@@ -224,7 +224,7 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       supabase.removeChannel(participantsSubscription)
       supabase.removeChannel(matchesSubscription)
     }
-  }, [tournamentId])
+  }, [tournamentId, fetchTournamentDetails])
 
   const handleRegister = async () => {
     if (!user || !tournament) return
@@ -252,13 +252,14 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       if (error) throw error
 
       setIsRegistered(true)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error registering for tournament:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setError({
         visible: true,
         title: 'Registration Failed',
-        message: `We couldn't register you for this tournament: ${error.message}`,
-        details: error.message,
+        message: `We couldn't register you for this tournament: ${errorMessage}`,
+        details: errorMessage,
         type: 'error'
       })
     } finally {
@@ -286,13 +287,14 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       if (error) throw error
 
       setIsRegistered(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error unregistering from tournament:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setError({
         visible: true,
         title: 'Withdrawal Failed',
-        message: `We couldn't withdraw you from this tournament: ${error.message}`,
-        details: error.message,
+        message: `We couldn't withdraw you from this tournament: ${errorMessage}`,
+        details: errorMessage,
         type: 'error'
       })
     } finally {
@@ -319,25 +321,22 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       
       // Now generate the bracket
       await handleGenerateBracket()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error closing registration:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setError({
         visible: true,
         title: 'Failed to Close Registration',
-        message: `We couldn't close registration for this tournament: ${error.message}`,
-        details: error.message,
+        message: `We couldn't close registration for this tournament: ${errorMessage}`,
+        details: errorMessage,
         type: 'error'
       })
-    } finally {
-      setIsClosingRegistration(false)
     }
   }
 
   const handleGenerateBracket = async () => {
     if (!tournament) return
-    setIsGeneratingBracket(true)
     setError(prev => ({...prev, visible: false}))
-    setBracketGenerationSuccess(false)
 
     try {
       // Call the AWS Lambda function to generate the tournament bracket
@@ -353,15 +352,16 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       setTimeout(() => {
         setBracketGenerationSuccess(false)
       }, 3000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating bracket:', error);
       
       // Set user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError({
         visible: true,
         title: 'Bracket Generation Failed',
-        message: getTournamentErrorMessage(error.message),
-        details: error.message,
+        message: getTournamentErrorMessage(errorMessage),
+        details: errorMessage,
         type: 'error'
       })
     } finally {
@@ -418,13 +418,14 @@ export const TournamentDetails: React.FC<TournamentDetailsProps> = ({ tournament
       setTimeout(() => {
         setBracketGenerationSuccess(false)
       }, 3000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error starting tournament:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError({
         visible: true,
         title: 'Tournament Start Failed',
-        message: getTournamentErrorMessage(error.message),
-        details: error.message,
+        message: getTournamentErrorMessage(errorMessage),
+        details: errorMessage,
         type: 'error'
       })
     } finally {

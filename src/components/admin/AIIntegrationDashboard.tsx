@@ -13,6 +13,7 @@ import {
   Wifi,
   Play,
   Pause,
+  Zap,
   RotateCcw
 } from 'lucide-react';
 

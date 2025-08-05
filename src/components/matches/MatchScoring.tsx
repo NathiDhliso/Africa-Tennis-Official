@@ -521,7 +521,7 @@ const MatchScoring: React.FC<{
     }
   };
 
-  const handleAnalyticsUpdate = (analytics: any) => {
+  const handleAnalyticsUpdate = (analytics: Record<string, unknown>) => {
     console.log('Analytics update:', analytics);
     // Store analytics data for post-match analysis
   };

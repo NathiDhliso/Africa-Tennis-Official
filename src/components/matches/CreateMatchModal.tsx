@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, MapPin, Users, Search, Clock, Target } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +26,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPlayers, setFilteredPlayers] = useState<Profile[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(preselectedPlayer || null);
+
   
   const [formData, setFormData] = useState({
     date: '',
@@ -56,13 +57,13 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         time: defaultTime
       }));
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, loadAvailablePlayers]);
 
   useEffect(() => {
     filterPlayers();
-  }, [searchQuery, availablePlayers]);
+  }, [searchQuery, availablePlayers, filterPlayers]);
 
-  const loadAvailablePlayers = async () => {
+  const loadAvailablePlayers = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -77,9 +78,9 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     } catch (error) {
       console.error('Error loading players:', error);
     }
-  };
+  }, [user]);
 
-  const filterPlayers = () => {
+  const filterPlayers = useCallback(() => {
     // Only show players if search query is at least 2 characters
     if (searchQuery.length < 2) {
       setFilteredPlayers([]);
@@ -92,7 +93,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     ).slice(0, 8);
 
     setFilteredPlayers(filtered);
-  };
+  }, [searchQuery, availablePlayers]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -251,7 +252,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                     type="button"
                     onClick={() => {
                       setSelectedPlayer(null);
-                      setShowPlayerSearch(true);
+
                       setSearchQuery('');
                     }}
                     className="match-change-player-btn"
@@ -283,7 +284,7 @@ const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                           key={player.user_id}
                           onClick={() => {
                             setSelectedPlayer(player);
-                            setShowPlayerSearch(false);
+
                           }}
                           className="player-search-item"
                         >

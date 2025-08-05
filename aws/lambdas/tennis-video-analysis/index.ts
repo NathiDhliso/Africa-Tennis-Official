@@ -29,12 +29,12 @@ interface TennisAnalysisResult {
     timestamp: number;
     player1: {
       position: { x: number; y: number };
-      pose: any;
+      pose: Record<string, unknown>;
       courtPosition: string;
     };
     player2: {
       position: { x: number; y: number };
-      pose: any;
+      pose: Record<string, unknown>;
       courtPosition: string;
     };
   }>;
@@ -123,7 +123,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     try {
       // Convert video stream to buffer for processing
       const chunks: Buffer[] = [];
-      const stream = Body as any;
+      const stream = Body as NodeJS.ReadableStream;
       
       for await (const chunk of stream) {
         chunks.push(chunk);
@@ -134,7 +134,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
       // Step 1: Analyze court structure (once per video)
       console.log('Step 1: Analyzing court structure...');
-      const courtDetection = await courtAnalysisService.analyzeCourt(videoBuffer.slice(0, Math.min(videoBuffer.length, 1024 * 1024))); // Use first 1MB for court analysis
+      const courtDetection = await courtAnalysisService.analyzeCourt(); // Use first 1MB for court analysis
       
       // Step 2: Process video frames with multi-model pipeline
       console.log('Step 2: Processing video frames...');
@@ -292,12 +292,11 @@ async function processVideoFrames(
     videoBuffer: Buffer,
     playerRacketService: PlayerRacketDetectionService,
     ballTrackingService: BallTrackingService,
-    courtDetection: any,
-    analysisOptions: any
-  ): Promise<any[]> {
+    courtDetection: Record<string, unknown>
+  ): Promise<Record<string, unknown>[]> {
     const frameResults = [];
-    const maxFrames = analysisOptions.maxFrames || 300;
-    const analysisFps = analysisOptions.analysisFps || 5;
+    const maxFrames = 300;
+    const analysisFps = 5;
     
     // Simulate frame extraction (in production, use FFmpeg or similar)
     const frameInterval = 1000 / analysisFps; // ms between frames
@@ -347,14 +346,13 @@ function extractFrame(videoBuffer: Buffer, frameIndex: number): Buffer {
 
 // Helper method to aggregate analysis results
 function aggregateAnalysisResults(
-    frameResults: any[],
-    courtDetection: any,
-    analysisOptions: any
+    frameResults: Record<string, unknown>[],
+    courtDetection: Record<string, unknown>
   ): TennisAnalysisResult {
-    const ballTracking: any[] = [];
-    const playerMovement: any[] = [];
-    const shotDetection: any[] = [];
-    const highlights: any[] = [];
+    const ballTracking: Record<string, unknown>[] = [];
+    const playerMovement: Record<string, unknown>[] = [];
+    const shotDetection: Record<string, unknown>[] = [];
+    const highlights: Record<string, unknown>[] = [];
     
     let totalShots = 0;
     let totalRallies = 0;
@@ -482,7 +480,7 @@ function aggregateAnalysisResults(
   }
 
 // Helper method to determine court position
-function determineCourtPosition(playerBbox: number[], courtDetection: any): string {
+function determineCourtPosition(playerBbox: number[], courtDetection: Record<string, unknown>): string {
     const playerCenterY = playerBbox[1] + playerBbox[3] / 2;
     const netY = courtDetection.netPosition.y1;
     const courtHeight = courtDetection.courtBounds.height;
@@ -499,10 +497,8 @@ function determineCourtPosition(playerBbox: number[], courtDetection: any): stri
   }
 
 // Helper method to calculate court coverage percentage
-function calculateCourtCoverage(playerPositions: any[], courtDetection: any): number {
+function calculateCourtCoverage(playerPositions: Record<string, unknown>[], courtDetection: Record<string, unknown>): number {
     if (playerPositions.length === 0) return 0;
-    
-    const courtArea = courtDetection.courtBounds.width * courtDetection.courtBounds.height;
     const gridSize = 20; // 20x20 pixel grid cells
     const coveredCells = new Set<string>();
     

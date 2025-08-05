@@ -6,9 +6,7 @@ import { User, Camera, Save, X, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
-import type { Database } from '../../types/supabase-generated'
 
-type Profile = Database['public']['Tables']['profiles']['Row']
 
 const profileSchema = z.object({
   username: z.string().min(3, 'Username must contain at least 3 characters'),
@@ -61,8 +59,8 @@ export const ProfileForm: React.FC = () => {
       await updateProfile(data)
       setSuccessMessage('Profile updated successfully')
       reset(data) // Reset form with new values
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Profile update failed. Please try again later.')
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Profile update failed. Please try again later.')
     } finally {
       setIsSubmitting(false)
     }
@@ -112,8 +110,8 @@ export const ProfileForm: React.FC = () => {
       // Update profile with new picture URL
       await updateProfile({ profile_picture_url: publicUrl })
       setSuccessMessage('Profile picture updated successfully')
-    } catch (err: any) {
-      setErrorMessage('Error uploading profile picture: ' + err.message)
+    } catch (err: unknown) {
+      setErrorMessage('Error uploading profile picture: ' + (err instanceof Error ? err.message : 'Unknown error'))
       // Reset preview on error
       setPreviewUrl(profile.profile_picture_url);
     } finally {
@@ -145,8 +143,8 @@ export const ProfileForm: React.FC = () => {
       await updateProfile({ profile_picture_url: null });
       setPreviewUrl(null);
       setSuccessMessage('Profile picture removed successfully');
-    } catch (err: any) {
-      setErrorMessage('Error removing profile picture: ' + err.message);
+    } catch (err: unknown) {
+      setErrorMessage('Error removing profile picture: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setIsUploading(false);
     }
@@ -241,7 +239,7 @@ export const ProfileForm: React.FC = () => {
               )}
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit as any)} className="profile-form">
+            <form onSubmit={handleSubmit(onSubmit)} className="profile-form">
               {/* Username */}
               <div className="profile-form-group">
                 <label htmlFor="username" className="profile-form-label">

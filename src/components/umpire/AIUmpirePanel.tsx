@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Eye,
   AlertTriangle,
-  CheckCircle,
   X,
   Volume2,
   VolumeX,
@@ -42,11 +41,13 @@ interface AIUmpirePanelProps {
   onCallMade: (call: UmpireCall) => void;
   onSettingsChange: (settings: AIUmpireSettings) => void;
   videoElement?: HTMLVideoElement;
-  courtDetectionData?: any;
+  courtDetectionData?: {
+    corners: Array<{ x: number; y: number }>;
+    lines: Array<{ start: { x: number; y: number }; end: { x: number; y: number } }>;
+  };
 }
 
 const AIUmpirePanel: React.FC<AIUmpirePanelProps> = ({
-  matchId,
   isActive,
   onCallMade,
   onSettingsChange,
@@ -74,13 +75,18 @@ const AIUmpirePanel: React.FC<AIUmpirePanelProps> = ({
   });
   
   const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // eslint-disable-next-line no-undef
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastCallTimeRef = useRef<number>(0);
 
   // Initialize audio context for call sounds
   useEffect(() => {
     if (settings.soundEnabled && !audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // eslint-disable-next-line no-undef
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioContextClass) {
+        audioContextRef.current = new AudioContextClass();
+      }
     }
   }, [settings.soundEnabled]);
 
@@ -166,7 +172,7 @@ const AIUmpirePanel: React.FC<AIUmpirePanelProps> = ({
     } catch (error) {
       console.error('AI Umpire analysis error:', error);
     }
-  }, [videoElement, isActive, isCalibrated, settings, onCallMade, playCallSound]);
+  }, [videoElement, isActive, isCalibrated, settings, onCallMade, playCallSound, evaluateCall]);
 
   // Real ball detection function using AI service
   const detectBallPosition = async (imageData: ImageData, settings: AIUmpireSettings) => {
@@ -221,7 +227,7 @@ const AIUmpirePanel: React.FC<AIUmpirePanelProps> = ({
   };
 
   // Evaluate if ball is in or out
-  const evaluateCall = async (ballDetection: any, canvasWidth: number, canvasHeight: number): Promise<UmpireCall | null> => {
+  const evaluateCall = useCallback(async (ballDetection: { position: { x: number; y: number }; confidence: number; speed?: number; timestamp: number }, canvasWidth: number, canvasHeight: number): Promise<UmpireCall | null> => {
     const { position, confidence, speed } = ballDetection;
     
     // Use real court detection data if available, otherwise use default bounds
@@ -283,7 +289,7 @@ const AIUmpirePanel: React.FC<AIUmpirePanelProps> = ({
       courtRegion,
       challengeable
     };
-  };
+  }, [settings, courtDetectionData]);
 
   // Start/stop AI analysis
   useEffect(() => {

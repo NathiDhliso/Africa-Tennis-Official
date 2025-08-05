@@ -98,16 +98,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // Fetch match events for analytics
-    const { data: events, error: eventsError } = await supabase
+    const { data: events } = await supabase
       .from('match_events')
       .select('*')
       .eq('match_id', matchId)
       .order('created_at', { ascending: true });
-
-    // Note: match_statistics table doesn't exist in current schema
-    // Using null for now until table is created
-    const statistics = null;
-    const statsError = null;
 
     // Calculate match duration
     const startTime = new Date(match.created_at).getTime();
@@ -121,7 +116,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       if (!acc[event.event_type]) acc[event.event_type] = [];
       acc[event.event_type].push(event);
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, unknown[]>);
 
     // Calculate match stats
     const matchStats: MatchStats = {

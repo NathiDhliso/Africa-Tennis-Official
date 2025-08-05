@@ -68,7 +68,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // Fetch match events for performance calculation
-    const { data: events, error: eventsError } = await supabase
+    const { data: events } = await supabase
       .from('match_events')
       .select('*')
       .eq('match_id', matchId)

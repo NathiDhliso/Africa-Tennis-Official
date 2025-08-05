@@ -29,7 +29,7 @@ interface TrajectoryPoint {
 }
 
 export class BallTrackingService {
-  private model: any | null = null; // tf.LayersModel for production
+  private model: Record<string, unknown> | null = null; // tf.LayersModel for production
   private isModelLoaded = false;
   private readonly INPUT_SIZE = 416;
   private readonly CONFIDENCE_THRESHOLD = 0.7;
@@ -75,7 +75,7 @@ export class BallTrackingService {
     imageBuffer: Buffer,
     timestamp: number,
     frameIndex: number,
-    courtBounds?: any
+    courtBounds?: Record<string, unknown>
   ): Promise<BallTrackingFrame> {
     if (!this.isModelLoaded) {
       await this.loadModel();
@@ -114,7 +114,7 @@ export class BallTrackingService {
     }
   }
 
-  private async detectBalls(image: any, timestamp: number): Promise<BallDetection[]> {
+  private async detectBalls(image: Record<string, unknown>, timestamp: number): Promise<BallDetection[]> {
     // Simulate specialized ball detection
     // In production, this would use the trained CNN model
     
@@ -124,7 +124,7 @@ export class BallTrackingService {
       ...detection,
       velocity: this.calculateVelocity(detection.position, timestamp),
       speed: this.calculateSpeed(detection.position, timestamp),
-      spin: this.analyzeSpin(detection.position, timestamp),
+      spin: this.analyzeSpin(),
       bounceDetected: this.detectBounce(detection.position, timestamp),
       trajectory: this.getRecentTrajectory(5), // Last 5 points
       inBounds: this.isInBounds(detection.position),
@@ -266,7 +266,7 @@ export class BallTrackingService {
     return Math.min(approximateMPH, 150); // Cap at reasonable tennis ball speed
   }
 
-  private analyzeSpin(position: { x: number; y: number }, timestamp: number): BallDetection['spin'] {
+  private analyzeSpin(): BallDetection['spin'] {
     if (this.ballTrajectory.length < 3) return 'unknown';
     
     // Analyze trajectory curvature to determine spin

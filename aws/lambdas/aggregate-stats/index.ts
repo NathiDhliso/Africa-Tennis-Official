@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 interface PlayerStats {
   user_id: string;
@@ -137,7 +137,7 @@ export const handler = async (event: {
   }
 };
 
-async function aggregateAllPlayersStats(supabase: any): Promise<{
+async function aggregateAllPlayersStats(supabase: SupabaseClient): Promise<{
   playersProcessed: number;
   rankingsUpdated: boolean;
   processingTime: number;
@@ -209,7 +209,7 @@ async function aggregateAllPlayersStats(supabase: any): Promise<{
   };
 }
 
-async function aggregatePlayerStats(supabase: any, playerId: string): Promise<PlayerStats> {
+async function aggregatePlayerStats(supabase: SupabaseClient, playerId: string): Promise<PlayerStats> {
   // Get player profile
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -224,7 +224,7 @@ async function aggregatePlayerStats(supabase: any, playerId: string): Promise<Pl
   return await calculatePlayerStats(supabase, profile.user_id, profile.username, profile.elo_rating);
 }
 
-async function calculatePlayerStats(supabase: any, userId: string, username: string, eloRating: number): Promise<PlayerStats> {
+async function calculatePlayerStats(supabase: SupabaseClient, userId: string, username: string, eloRating: number): Promise<PlayerStats> {
   // Fetch all matches for the player
   const { data: matches, error: matchesError } = await supabase
     .from('matches')
@@ -239,12 +239,12 @@ async function calculatePlayerStats(supabase: any, userId: string, username: str
   }
 
   const totalMatches = matches?.length || 0;
-  const wins = matches?.filter((match: any) => match.winner_id === userId).length || 0;
+  const wins = matches?.filter((match) => match.winner_id === userId).length || 0;
   const winRate = totalMatches > 0 ? (wins / totalMatches) * 100 : 0;
 
   // Calculate recent form (last 10 matches)
   const recentMatches = matches?.slice(0, 10) || [];
-  const recentWins = recentMatches.filter((match: any) => match.winner_id === userId).length;
+  const recentWins = recentMatches.filter((match) => match.winner_id === userId).length;
   const recentForm = recentMatches.length > 0 ? (recentWins / recentMatches.length) * 100 : 0;
 
   // Calculate win streaks
@@ -279,7 +279,7 @@ async function calculatePlayerStats(supabase: any, userId: string, username: str
       if (opponentProfile?.elo_rating) {
         opponentElos.push(opponentProfile.elo_rating);
       }
-    } catch (error) {
+    } catch {
       // Continue if opponent profile not found
     }
   }

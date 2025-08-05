@@ -55,12 +55,7 @@ interface LineDetection {
   type: 'horizontal' | 'vertical' | 'diagonal';
 }
 
-interface EdgePixel {
-  x: number;
-  y: number;
-  magnitude: number;
-  direction: number;
-}
+
 
 export class CourtAnalysisService {
   private readonly CANNY_LOW_THRESHOLD = 50;
@@ -82,7 +77,7 @@ export class CourtAnalysisService {
 
   constructor() {}
 
-  async analyzeCourt(imageBuffer: Buffer): Promise<CourtDetection> {
+  async analyzeCourt(): Promise<CourtDetection> {
     try {
       console.log('Starting enhanced court analysis...');
       
@@ -104,13 +99,13 @@ export class CourtAnalysisService {
       const lines = this.detectLinesHough(edges, imageWidth, imageHeight);
       
       // Step 3: Filter and classify lines
-      const classifiedLines = this.classifyCourtLines(lines, imageWidth, imageHeight);
+      const classifiedLines = this.classifyCourtLines(lines);
       
       // Step 4: Construct court geometry
       const courtGeometry = this.constructCourtGeometry(classifiedLines, imageWidth, imageHeight);
       
       // Step 5: Perspective analysis and correction
-      const perspective = this.analyzePerspective(courtGeometry, imageWidth, imageHeight);
+      const perspective = this.analyzePerspective(courtGeometry);
       
       // Step 6: Validate and refine detection
       const refinedCourt = this.validateAndRefine(courtGeometry, perspective);
@@ -508,7 +503,7 @@ export class CourtAnalysisService {
     return mergedLine;
   }
 
-  private classifyCourtLines(lines: LineDetection[], width: number, height: number): {
+  private classifyCourtLines(lines: LineDetection[]): {
     horizontalLines: LineDetection[];
     verticalLines: LineDetection[];
     baselines: LineDetection[];
@@ -578,7 +573,13 @@ export class CourtAnalysisService {
     };
   }
 
-  private constructCourtGeometry(classifiedLines: any, width: number, height: number): Omit<CourtDetection, 'perspective'> {
+  private constructCourtGeometry(classifiedLines: {
+    baselines: LineDetection[];
+    serviceLines: LineDetection[];
+    sidelines: LineDetection[];
+    netLine: LineDetection | null;
+    centerServiceLine: LineDetection | null;
+  }, width: number, height: number): Omit<CourtDetection, 'perspective'> {
     const { baselines, serviceLines, sidelines, netLine, centerServiceLine } = classifiedLines;
     
     // Calculate court bounds
@@ -607,7 +608,7 @@ export class CourtAnalysisService {
     const serviceBoxes = this.calculateServiceBoxes(courtBounds, serviceLines, centerServiceLine, netLine);
     
     // Calculate confidence based on detected lines
-    const confidence = this.calculateDetectionConfidence(classifiedLines, width, height);
+    const confidence = this.calculateDetectionConfidence(classifiedLines);
     
     return {
       courtBounds,
@@ -670,7 +671,7 @@ export class CourtAnalysisService {
     };
   }
 
-  private calculateServiceBoxes(courtBounds: any, serviceLines: LineDetection[], centerServiceLine: LineDetection | null, netLine: LineDetection | null) {
+  private calculateServiceBoxes(courtBounds: { x: number; y: number; width: number; height: number }, serviceLines: LineDetection[], centerServiceLine: LineDetection | null, netLine: LineDetection | null) {
     const netY = netLine ? (netLine.y1 + netLine.y2) / 2 : courtBounds.height / 2;
     const centerX = centerServiceLine ? (centerServiceLine.x1 + centerServiceLine.x2) / 2 : courtBounds.width / 2;
     
@@ -693,7 +694,13 @@ export class CourtAnalysisService {
     };
   }
 
-  private calculateDetectionConfidence(classifiedLines: any, width: number, height: number): number {
+  private calculateDetectionConfidence(classifiedLines: {
+    baselines: LineDetection[];
+    serviceLines: LineDetection[];
+    sidelines: LineDetection[];
+    netLine: LineDetection | null;
+    centerServiceLine: LineDetection | null;
+  }): number {
     let confidence = 0;
     
     // Base confidence on number of detected lines
@@ -717,7 +724,10 @@ export class CourtAnalysisService {
     return Math.min(1.0, confidence);
   }
 
-  private analyzePerspective(courtGeometry: any, width: number, height: number): CourtDetection['perspective'] {
+  private analyzePerspective(courtGeometry: {
+    baselines: { top: LineDetection | null; bottom: LineDetection | null };
+    sidelines: { left: LineDetection | null; right: LineDetection | null };
+  }): CourtDetection['perspective'] {
     // Analyze perspective distortion and calculate homography matrix
     const { baselines, sidelines } = courtGeometry;
     
@@ -758,7 +768,7 @@ export class CourtAnalysisService {
     };
   }
 
-  private validateAndRefine(courtGeometry: any, perspective: any): Omit<CourtDetection, 'perspective'> {
+  private validateAndRefine(courtGeometry: Omit<CourtDetection, 'perspective'>, perspective: CourtDetection['perspective']): Omit<CourtDetection, 'perspective'> {
     // Validate court geometry against tennis court rules
     let refinedGeometry = { ...courtGeometry };
     
@@ -802,7 +812,7 @@ export class CourtAnalysisService {
     return { x, y };
   }
 
-  public pixelToWorld(pixelX: number, pixelY: number, homographyMatrix: number[][]): { x: number; y: number } {
+  public pixelToWorld(pixelX: number, pixelY: number): { x: number; y: number } {
     // Transform pixel coordinates to world coordinates (inverse homography)
     // This would require matrix inversion in production
     return { x: pixelX, y: pixelY };

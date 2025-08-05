@@ -32,7 +32,7 @@ interface YOLODetection {
 }
 
 export class PlayerRacketDetectionService {
-  private model: any | null = null; // tf.GraphModel for production
+  private model: Record<string, unknown> | null = null; // tf.GraphModel for production
   private isModelLoaded = false;
   private readonly INPUT_SIZE = 640;
   private readonly CONFIDENCE_THRESHOLD = 0.5;
@@ -155,7 +155,7 @@ export class PlayerRacketDetectionService {
         bbox: person.bbox,
         confidence: person.confidence,
         playerId,
-        pose: this.estimateBasicPose(person.bbox, imageWidth, imageHeight)
+        pose: this.estimateBasicPose(person.bbox)
       };
       
       if (associatedRacket) {
@@ -264,9 +264,7 @@ export class PlayerRacketDetectionService {
   }
 
   private estimateBasicPose(
-    playerBbox: [number, number, number, number],
-    imageWidth: number,
-    imageHeight: number
+    playerBbox: [number, number, number, number]
   ) {
     const [x, y, w, h] = playerBbox;
     
@@ -298,7 +296,7 @@ export class PlayerRacketDetectionService {
   }
 
   private calculateRacketAngle(racketBbox: [number, number, number, number]): number {
-    const [x, y, w, h] = racketBbox;
+    const [, , w, h] = racketBbox;
     
     // Estimate racket angle based on bounding box aspect ratio
     const aspectRatio = w / h;

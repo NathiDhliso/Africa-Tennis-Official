@@ -1,11 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
-import * as tf from '@tensorflow/tfjs-node';
-// Stream processing utilities
-import { PassThrough } from 'stream';
-import { createCanvas, loadImage } from 'canvas';
-import ffmpeg from 'fluent-ffmpeg';
 
 // CORS headers
 const corsHeaders = {
@@ -30,12 +25,12 @@ interface VideoAnalysisResult {
     players: Array<{
       id: string;
       position: { x: number; y: number };
-      pose: any;
+      pose: Record<string, unknown>;
     }>;
   }>;
   courtDetection: {
-    lines: any[];
-    regions: any;
+    lines: Record<string, unknown>[];
+    regions: Record<string, unknown>;
     confidence: number;
   };
   highlights: Array<{
@@ -220,4 +215,4 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       })
     };
   }
-}; 
+};

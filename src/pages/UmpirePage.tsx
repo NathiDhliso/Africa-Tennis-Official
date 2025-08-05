@@ -181,6 +181,7 @@ const UmpirePage: React.FC = () => {
       const tournamentIds = tournaments.map(t => t.id);
       loadMatches(tournamentIds);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournaments.length]); // Removed loadMatches dependency to prevent infinite loop
 
 
@@ -195,6 +196,7 @@ const UmpirePage: React.FC = () => {
       const tournamentIds = tournaments.map(t => t.id);
       loadMatches(tournamentIds); // Refresh matches when returning from scoring
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournaments]); // Removed loadMatches dependency to prevent recreation
 
   const dismissError = React.useCallback(() => {

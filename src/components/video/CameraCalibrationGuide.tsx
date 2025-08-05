@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, CheckCircle, AlertTriangle, Target, Smartphone, Monitor, Info, Eye, Square } from 'lucide-react';
+import { Camera, CheckCircle, AlertTriangle, Target, Smartphone, Info, Eye, Square } from 'lucide-react';
 
 interface CameraCalibrationGuideProps {
   isVisible: boolean;
@@ -400,4 +400,4 @@ const CameraCalibrationGuide: React.FC<CameraCalibrationGuideProps> = ({
   );
 };
 
-export default CameraCalibrationGuide; 
+export default CameraCalibrationGuide;

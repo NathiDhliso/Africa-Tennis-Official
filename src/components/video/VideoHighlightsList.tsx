@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { Play, Trash, Download, Video, Activity, Star, TrendingUp, Zap, Target, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useInView } from 'react-intersection-observer';
@@ -85,7 +85,7 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
     if (inView && !isLoading && hasMore) {
       loadMoreHighlights();
     }
-  }, [inView]);
+  }, [inView, isLoading, hasMore, loadMoreHighlights]);
 
   // Initial load of highlights
   useEffect(() => {
@@ -109,10 +109,10 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
     return () => {
       supabase.removeChannel(highlightsSubscription);
     };
-  }, [matchId]);
+  }, [matchId, fetchHighlights]);
 
   // Fetch highlights with pagination
-  const fetchHighlights = async (pageNum: number) => {
+  const fetchHighlights = useCallback(async (pageNum: number) => {
     setIsLoading(true);
     setError(null);
     
@@ -145,14 +145,14 @@ const VideoHighlightsList: React.FC<VideoHighlightsListProps> = memo(({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [matchId]);
 
   // Load more highlights
-  const loadMoreHighlights = () => {
+  const loadMoreHighlights = useCallback(() => {
     const nextPage = page + 1;
     setPage(nextPage);
     fetchHighlights(nextPage);
-  };
+  }, [page, fetchHighlights]);
 
   const handlePlayHighlight = (highlight: VideoHighlight) => {
     setSelectedHighlight(highlight);

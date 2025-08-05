@@ -137,7 +137,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { playerId, videoAnalysisKeys, matchId, coachingFocus = 'comprehensive' } = body;
+    const { playerId, videoAnalysisKeys, coachingFocus = 'comprehensive' } = body;
 
     if (!playerId || !videoAnalysisKeys || videoAnalysisKeys.length === 0) {
       return {
@@ -168,7 +168,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // Fetch recent matches for context
-    const { data: matches, error: matchesError } = await supabase
+    const { data: matches } = await supabase
       .from('matches')
       .select(`
         *,
@@ -190,7 +190,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
           }));
           
           if (analysisData.Body) {
-            const content = await streamToString(analysisData.Body as any);
+            const content = await streamToString(analysisData.Body as Record<string, unknown>);
             return JSON.parse(content);
           }
         } catch (error) {
@@ -264,9 +264,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 };
 
 async function generateVideoBasedCoaching(
-  profile: any,
-  matches: any[],
-  videoAnalysisData: any[],
+  profile: Record<string, unknown>,
+  matches: Record<string, unknown>[],
+  videoAnalysisData: Record<string, unknown>[],
   coachingFocus: string
 ): Promise<VideoBasedCoachingResult> {
   
@@ -282,14 +282,15 @@ async function generateVideoBasedCoaching(
   );
 
   // Combine video analysis with AI insights
-  const technicalAnalysis = analyzeTechnicalAspects(aggregatedData, aiInsights);
-  const tacticalAnalysis = analyzeTacticalAspects(aggregatedData, matches, aiInsights);
+  const technicalAnalysis = analyzeTechnicalAspects(aggregatedData);
+  const tacticalAnalysis = analyzeTacticalAspects();
   const performanceMetrics = calculatePerformanceMetrics(aggregatedData);
-  const recommendations = generateRecommendations(technicalAnalysis, tacticalAnalysis, performanceMetrics, aiInsights);
-  const comparativeAnalysis = generateComparativeAnalysis(profile, performanceMetrics, matches);
-  const personalizedDrills = generatePersonalizedDrills(recommendations, profile.skill_level);
+  const recommendations = generateRecommendations();
+  const comparativeAnalysis = generateComparativeAnalysis(profile, performanceMetrics);
+  const personalizedDrills = generatePersonalizedDrills(profile.skill_level);
 
   return {
+    aiInsights,
     technicalAnalysis,
     tacticalAnalysis,
     performanceMetrics,
@@ -300,11 +301,11 @@ async function generateVideoBasedCoaching(
 }
 
 async function generateAICoachingInsights(
-  profile: any,
-  matches: any[],
-  aggregatedData: any,
+  profile: Record<string, unknown>,
+  matches: Record<string, unknown>[],
+  aggregatedData: Record<string, unknown>,
   coachingFocus: string
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   
   const prompt = `
   <human>
@@ -395,7 +396,7 @@ async function generateAICoachingInsights(
 }
 
 // Helper functions
-async function streamToString(stream: any): Promise<string> {
+async function streamToString(stream: Record<string, unknown>): Promise<string> {
   const chunks: Buffer[] = [];
   return new Promise((resolve, reject) => {
     stream.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -404,7 +405,7 @@ async function streamToString(stream: any): Promise<string> {
   });
 }
 
-function aggregateVideoAnalysisData(videoAnalysisData: any[]): any {
+function aggregateVideoAnalysisData(videoAnalysisData: Record<string, unknown>[]): Record<string, unknown> {
   // Aggregate data from multiple video analyses
   const totalShots = videoAnalysisData.reduce((sum, data) => 
     sum + (data.matchStatistics?.totalShots || 0), 0);
@@ -436,7 +437,7 @@ function aggregateVideoAnalysisData(videoAnalysisData: any[]): any {
   };
 }
 
-function analyzeTechnicalAspects(aggregatedData: any, aiInsights: string): any {
+function analyzeTechnicalAspects(aggregatedData: Record<string, unknown>): Record<string, unknown> {
   return {
     strokeMechanics: {
       forehand: {
@@ -479,7 +480,7 @@ function analyzeTechnicalAspects(aggregatedData: any, aiInsights: string): any {
   };
 }
 
-function analyzeTacticalAspects(aggregatedData: any, matches: any[], aiInsights: string): any {
+function analyzeTacticalAspects(): Record<string, unknown> {
   return {
     gameStyle: "Aggressive Baseliner",
     strengths: ["Powerful groundstrokes", "Good court coverage", "Consistent rally play"],
@@ -498,7 +499,7 @@ function analyzeTacticalAspects(aggregatedData: any, matches: any[], aiInsights:
   };
 }
 
-function calculatePerformanceMetrics(aggregatedData: any): any {
+function calculatePerformanceMetrics(aggregatedData: Record<string, unknown>): Record<string, unknown> {
   return {
     shotAccuracy: {
       overall: aggregatedData.shotAccuracy,
@@ -522,7 +523,7 @@ function calculatePerformanceMetrics(aggregatedData: any): any {
   };
 }
 
-function generateRecommendations(technical: any, tactical: any, performance: any, aiInsights: string): any {
+function generateRecommendations(): Record<string, unknown> {
   return {
     immediate: [
       {
@@ -552,7 +553,7 @@ function generateRecommendations(technical: any, tactical: any, performance: any
   };
 }
 
-function generateComparativeAnalysis(profile: any, performance: any, matches: any[]): any {
+function generateComparativeAnalysis(profile: Record<string, unknown>, performance: Record<string, unknown>): Record<string, unknown> {
   return {
     playerLevel: profile.skill_level,
     similarPlayers: ["Player with similar ELO and style"],
@@ -571,13 +572,13 @@ function generateComparativeAnalysis(profile: any, performance: any, matches: an
   };
 }
 
-function generatePersonalizedDrills(recommendations: any, skillLevel: string): any[] {
+function generatePersonalizedDrills(skillLevel: string): Record<string, unknown>[] {
   return [
     {
       name: "Serve Power Development",
       description: "Focus on leg drive and racket head speed for more powerful serves",
       duration: "20 minutes",
-      difficulty: skillLevel as any,
+      difficulty: skillLevel,
       focus: ["Power", "Technique"],
       instructions: [
         "Start with shadow swings focusing on leg drive",
@@ -590,7 +591,7 @@ function generatePersonalizedDrills(recommendations: any, skillLevel: string): a
       name: "Volley Touch and Placement",
       description: "Develop soft hands and precise placement at the net",
       duration: "15 minutes",
-      difficulty: skillLevel as any,
+      difficulty: skillLevel,
       focus: ["Touch", "Placement"],
       instructions: [
         "Start with mini-tennis at the net",
@@ -629,4 +630,4 @@ Overall Performance: Court coverage ${coachingResult.performanceMetrics.physical
 
 Next Training Focus: ${coachingResult.recommendations.immediate[0]?.description || 'Continue current development plan'}
   `.trim();
-} 
+}

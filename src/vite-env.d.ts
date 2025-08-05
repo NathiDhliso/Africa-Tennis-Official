@@ -1,4 +1,13 @@
 /// <reference types="vite/client" />
+/// <reference lib="dom" />
+
+// Global type declarations
+declare global {
+  interface Window {
+    // eslint-disable-next-line no-undef
+    webkitAudioContext?: new () => AudioContext;
+  }
+}
 
 const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_BASE_URL || '');
 

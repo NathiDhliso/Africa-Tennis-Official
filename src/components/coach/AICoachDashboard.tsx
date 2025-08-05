@@ -136,7 +136,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
   const speakInsight = useCallback((insight: CoachingInsight) => {
     if (!settings.voiceEnabled || !speechSynthesisRef.current) return;
 
-    const utterance = new (window as any).SpeechSynthesisUtterance(
+    const utterance = new (window as typeof window & { SpeechSynthesisUtterance: typeof SpeechSynthesisUtterance }).SpeechSynthesisUtterance(
       `${insight.priority} priority: ${insight.title}. ${insight.recommendation}`
     );
     utterance.rate = 0.9;
@@ -187,7 +187,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
   }, [isActive, videoElement, settings, onInsightGenerated, speakInsight, analyzeCurrentGameState, createInsightFromAnalysis, updatePerformanceMetrics]);
 
   // Real game state analysis using AI service
-  const analyzeCurrentGameState = async () => {
+  const analyzeCurrentGameState = useCallback(async () => {
     try {
       if (!videoElement) return null;
       
@@ -238,10 +238,10 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
       console.error('AI Coach analysis error:', error);
       return null;
     }
-  };
+  }, [videoElement, matchId, player1Id, player2Id, settings.insightThreshold]);
   
   // Create insight from analysis result
-  const createInsightFromAnalysis = (analysis: { confidence: number; type: string; description: string; recommendation: string; priority: string }) => {
+  const createInsightFromAnalysis = useCallback((analysis: { confidence: number; type: string; description: string; recommendation: string; priority: string }) => {
     if (!analysis || analysis.confidence < settings.insightThreshold) {
       return null;
     }
@@ -258,7 +258,7 @@ const AICoachDashboard: React.FC<AICoachDashboardProps> = ({
       priority: (analysis.confidence > 0.8 ? 'high' : 'medium') as 'medium' | 'high' | 'low' | 'critical',
       playerFocus: 'both' as 'player1' | 'player2' | 'both'
     };
-  };
+  }, [settings.insightThreshold]);
   
   // Update performance metrics based on real data
   const updatePerformanceMetrics = useCallback(async () => {

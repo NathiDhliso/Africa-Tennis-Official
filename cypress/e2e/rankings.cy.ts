@@ -90,6 +90,7 @@ describe('Rankings Feature', () => {
           cy.wrap($row).find('.player-name').invoke('text').then(text => {
             if (previousName) {
               // In descending order, current name should come before previous
+              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
               expect(text.toLowerCase() <= previousName.toLowerCase()).to.be.true;
             }
             previousName = text;
@@ -110,6 +111,7 @@ describe('Rankings Feature', () => {
           cy.wrap($row).find('.player-name').invoke('text').then(text => {
             if (previousName) {
               // In ascending order, current name should come after previous
+              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
               expect(text.toLowerCase() >= previousName.toLowerCase()).to.be.true;
             }
             previousName = text;

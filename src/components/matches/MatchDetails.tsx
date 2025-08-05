@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import LoadingSpinner from '../LoadingSpinner'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../lib/aws'
-import type { Database } from '../../types/supabase-generated'
+
 import { Match } from '../../types'
 
 interface MatchDetailsProps {
@@ -14,18 +14,16 @@ interface MatchDetailsProps {
 
 export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) => {
   const [match, setMatch] = useState<Match | null>(null)
-  const [events, setEvents] = useState<any[]>([])
-  const [player1, setPlayer1] = useState<any>(null)
-  const [player2, setPlayer2] = useState<any>(null)
+  const [events, setEvents] = useState<Array<{
+    id: string;
+    match_id: string;
+    type: string;
+    timestamp: string;
+    description: string;
+    score_data?: unknown;
+  }>>([])
   const [loading, setLoading] = useState(true)
-  const [isRegistered, setIsRegistered] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'matches'>('overview')
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [isUnregistering, setIsUnregistering] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isGeneratingBracket, setIsGeneratingBracket] = useState(false)
-  const [bracketGenerationSuccess, setBracketGenerationSuccess] = useState(false)
-  const [isClosingRegistration, setIsClosingRegistration] = useState(false)
   const [summary, setSummary] = useState<string | null>(null)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
   
@@ -74,19 +72,8 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
         setMatch(convertedMatch)
         setSummary(matchData.summary)
 
-        // Fetch player profiles
+        // Fetch match events
         if (matchData) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, username, elo_rating')
-            .in('user_id', [matchData.player1_id, matchData.player2_id])
-
-          if (profiles) {
-            setPlayer1(profiles.find(p => p.user_id === matchData.player1_id))
-            setPlayer2(profiles.find(p => p.user_id === matchData.player2_id))
-          }
-
-          // Fetch match events
           const { data: eventsData } = await supabase
             .from('match_events')
             .select('id, match_id, type, timestamp, description, score_data')
@@ -95,9 +82,9 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
 
           setEvents(eventsData || [])
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching match details:', error)
-        setError(error.message)
+        setError(error instanceof Error ? error.message : 'An unknown error occurred')
       } finally {
         setLoading(false)
       }
@@ -143,9 +130,9 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
       }
       
       setSummary(response.data.summary)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating match summary:', error)
-      setError(`Failed to generate summary: ${error.message}`)
+        setError(`Failed to generate summary: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsGeneratingSummary(false)
     }
@@ -331,7 +318,7 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
                 <div className="text-2xl font-bold" style={{ color: 'var(--quantum-cyan)' }}>
                   {typeof match.score === 'string' ? match.score : 
                    match.score && typeof match.score === 'object' && match.score.sets ? 
-                   match.score.sets.map((set: any) => `${set.player1_games}-${set.player2_games}`).join(', ') : 
+                   match.score.sets.map((set: { player1_games: number; player2_games: number }) => `${set.player1_games}-${set.player2_games}`).join(', ') : 
                    'Score unavailable'}
                 </div>
                 {match.winner && (
@@ -402,7 +389,7 @@ export const MatchDetails: React.FC<MatchDetailsProps> = ({ matchId, onBack }) =
             </div>
           ) : (
             <div className="border-l-2 border-glass-border ml-3 space-y-6 py-2">
-              {events.map((event, index) => (
+              {events.map((event) => (
                 <div key={event.id} className="relative pl-8 pb-2">
                   <div className="absolute -left-2 mt-1.5 w-4 h-4 rounded-full bg-quantum-cyan"></div>
                   <div className="text-sm text-text-subtle mb-1">

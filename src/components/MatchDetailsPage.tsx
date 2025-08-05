@@ -75,7 +75,7 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
   const [statistics, setStatistics] = useState<MatchStatistics | null>(null);
   const [timeline, setTimeline] = useState<MatchTimeline[]>([]);
   const [highlights, setHighlights] = useState<MatchHighlight[]>([]);
-  const [error, setError] = useState<string | null>(null);
+
   
   // Determine which player is the current user and which is the opponent
   const isUserChallenger = match.player1_id === user?.id;
@@ -195,11 +195,10 @@ const MatchDetailsPage: React.FC<MatchDetailsPageProps> = ({
       setHighlights(mockHighlights);
     } catch (error: unknown) {
       console.error('Error loading match:', error);
-      setError('Failed to load match details');
     } finally {
       setIsLoading(false);
     }
-  }, [match.id, isUserChallenger, match.player1_id, match.player2_id, player1Profile?.username, player2Profile?.username]);
+  }, [match.id, match.player1_id, player1Profile?.username, player2Profile?.username]);
 
   useEffect(() => {
     loadMatchData();
